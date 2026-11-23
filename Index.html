@@ -1,0 +1,2178 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/png" href="favicon2.png">
+  <title>Estudo em Foco — Plataforma de Organização de Aulas</title>
+  <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            obsidian: {
+              950: '#070a11',
+              900: '#0b101b',
+              850: '#101726',
+              800: '#162033',
+              700: '#1f2d47',
+            }
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    /* Custom Scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.25);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(148, 163, 184, 0.45);
+    }
+
+    /* Smooth animations */
+    @keyframes fadeSlideUp {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    .animate-view {
+      animation: fadeSlideUp 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    /* Line clamp fallback */
+    .line-clamp-1 {
+      display: -webkit-box;
+      -webkit-line-clamp: 1;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .line-clamp-2 {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900 dark:bg-obsidian-950 dark:text-slate-100 antialiased selection:bg-sky-500/30 selection:text-sky-200 overflow-hidden h-screen flex flex-col lg:flex-row">
+
+  <!-- Toast Notification (replaces alert) -->
+  <div id="toast" class="fixed bottom-5 right-5 z-[120] pointer-events-none opacity-0 translate-y-3 transition-all duration-300 flex items-center gap-2.5 px-4 py-3 rounded-xl bg-slate-900 dark:bg-obsidian-800 text-white border border-slate-700/80 shadow-2xl text-sm font-medium max-w-md">
+    <span id="toastIcon" class="text-emerald-400 shrink-0"></span>
+    <span id="toastMsg" class="leading-snug">Ação concluída</span>
+  </div>
+
+  <!-- Confirmation Modal (replaces confirm) -->
+  <div id="confirmModal" class="fixed inset-0 z-[110] hidden items-center justify-center bg-slate-950/75 backdrop-blur-xs p-4">
+    <div class="bg-white dark:bg-obsidian-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl animate-view">
+      <div class="flex items-start gap-3.5">
+        <div class="w-10 h-10 rounded-xl bg-red-500/10 text-red-500 flex items-center justify-center shrink-0">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        </div>
+        <div>
+          <h3 id="confirmTitle" class="font-bold text-base text-slate-900 dark:text-white">Confirmar ação</h3>
+          <p id="confirmMessage" class="text-sm text-slate-600 dark:text-slate-400 mt-1.5 leading-relaxed"></p>
+        </div>
+      </div>
+      <div class="flex items-center justify-end gap-2.5 mt-6">
+        <button onclick="closeConfirmModal()" class="px-4 py-2 rounded-xl text-sm font-semibold bg-slate-100 dark:bg-obsidian-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-obsidian-700 transition">
+          Cancelar
+        </button>
+        <button id="confirmActionBtn" class="px-4 py-2 rounded-xl text-sm font-bold bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/20 transition">
+          Excluir
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =======================================================================
+       MODAL: ADICIONAR NOVO TÓPICO MANUALMENTE NA DISCIPLINA
+       ======================================================================= -->
+  <div id="addTopicModal" class="fixed inset-0 z-[105] hidden items-center justify-center bg-slate-950/75 backdrop-blur-xs p-4">
+    <div class="bg-white dark:bg-obsidian-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl animate-view space-y-4">
+      <div class="flex items-center justify-between gap-3">
+        <div>
+          <h3 class="font-extrabold text-lg text-slate-900 dark:text-white">Adicionar Novo Tópico</h3>
+          <p id="addTopicDisciplineLabel" class="text-xs text-slate-500 dark:text-slate-400 mt-0.5"></p>
+        </div>
+        <button onclick="closeAddTopicModal()" aria-label="Fechar modal de novo tópico" class="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-obsidian-800 transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="space-y-3.5">
+        <div>
+          <label for="newTopicTitleInput" class="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
+            Título / Assunto do Tópico *
+          </label>
+          <input id="newTopicTitleInput" type="text" placeholder="Ex: Licitações e Contratos (Lei 14.133/2021) — Questões comentadas" class="w-full px-3.5 py-2.5 text-sm rounded-xl bg-slate-50 dark:bg-obsidian-950 border border-slate-200 dark:border-slate-700/80 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition" />
+        </div>
+
+        <div>
+          <label for="newTopicLinksInput" class="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
+            Links de Videoaula (opcional — 1 por linha)
+          </label>
+          <textarea id="newTopicLinksInput" rows="3" placeholder="Cole uma ou mais URLs/IDs do YouTube (um link por linha)..." class="w-full p-3.5 text-xs sm:text-sm rounded-xl bg-slate-50 dark:bg-obsidian-950 border border-slate-200 dark:border-slate-700/80 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition font-mono"></textarea>
+          <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Você também pode criar o tópico sem links e adicionar várias aulas depois.</p>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-2.5 pt-2">
+        <button onclick="closeAddTopicModal()" class="px-4 py-2.5 rounded-xl text-sm font-semibold bg-slate-100 dark:bg-obsidian-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-obsidian-700 transition">
+          Cancelar
+        </button>
+        <button onclick="saveNewManualTopic()" class="px-5 py-2.5 rounded-xl text-sm font-bold bg-sky-500 hover:bg-sky-600 text-white shadow-lg shadow-sky-500/25 transition">
+          Salvar Tópico
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mobile Top Header -->
+  <header class="lg:hidden h-16 shrink-0 bg-white/90 dark:bg-obsidian-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800/80 px-4 flex items-center justify-between z-30">
+    <button onclick="toggleSidebar()" aria-label="Abrir menu" class="p-2.5 rounded-xl bg-slate-100 dark:bg-obsidian-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-obsidian-700 transition">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </button>
+
+    <button onclick="renderHome()" class="flex items-center gap-2 text-left min-w-0">
+      <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-sky-500/20 shrink-0">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+      </div>
+      <span class="font-extrabold text-sm tracking-tight truncate">Estudo em Foco</span>
+    </button>
+
+    <div class="flex items-center gap-1.5">
+      <span id="mobilePctBadge" class="font-mono text-xs font-bold px-2.5 py-1 rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20">0%</span>
+      <button onclick="toggleTheme()" aria-label="Alternar tema" class="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-obsidian-800 transition">
+        <svg class="w-5 h-5 hidden dark:block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+        <svg class="w-5 h-5 block dark:hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Mobile Backdrop Overlay -->
+  <div id="overlay" onclick="closeSidebar()" class="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-30 hidden lg:hidden transition-opacity"></div>
+
+  <!-- Sidebar Navigation -->
+  <aside id="sidebar" class="fixed lg:static inset-y-0 left-0 z-40 w-[330px] xl:w-[360px] shrink-0 bg-white dark:bg-obsidian-900 border-r border-slate-200 dark:border-slate-800/80 flex flex-col transform -translate-x-full lg:translate-x-0 transition-transform duration-300 ease-out shadow-2xl lg:shadow-none">
+    
+    <!-- Brand Header -->
+    <div class="p-4 border-b border-slate-200 dark:border-slate-800/80 flex items-center justify-between gap-2">
+      <button onclick="renderHome(); closeSidebar();" class="flex items-center gap-3 text-left group flex-1 min-w-0">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-500 via-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-sky-500/20 group-hover:scale-105 transition-transform shrink-0">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+        </div>
+        <div class="min-w-0">
+          <div class="font-extrabold text-base tracking-tight text-slate-900 dark:text-white group-hover:text-sky-500 transition-colors truncate">Estudo em Foco</div>
+          <div class="text-xs font-medium text-slate-500 dark:text-slate-400 truncate">Plataforma de Organização de Aulas</div>
+        </div>
+      </button>
+
+      <!-- Theme Toggle (Desktop) & Close (Mobile) -->
+      <div class="flex items-center gap-1">
+        <button onclick="toggleTheme()" title="Alternar tema claro/escuro" class="hidden lg:flex p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-obsidian-800 hover:text-slate-900 dark:hover:text-white transition">
+          <svg class="w-4 h-4 hidden dark:block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+          <svg class="w-4 h-4 block dark:hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+        <button onclick="closeSidebar()" class="lg:hidden p-2 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-obsidian-800">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Multi-Concursos & Account Switcher -->
+    <div class="p-3.5 border-b border-slate-200 dark:border-slate-800/80 bg-slate-50/70 dark:bg-obsidian-950/60 space-y-2.5">
+      <div class="flex items-center justify-between">
+        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5 text-sky-500" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+          Meu Concurso / Edital
+        </span>
+        <button id="deleteCourseBtn" onclick="confirmDeleteCourse()" title="Excluir concurso selecionado" class="hidden text-[11px] font-semibold text-red-500 hover:text-red-400 flex items-center gap-1 transition">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+          Excluir
+        </button>
+      </div>
+
+      <div class="relative">
+        <select id="courseSelector" onchange="switchCourse(this.value)" class="w-full appearance-none pl-3 pr-9 py-2.5 text-xs sm:text-sm font-bold rounded-xl bg-white dark:bg-obsidian-850 border border-slate-200 dark:border-slate-700/80 text-slate-900 dark:text-white focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition cursor-pointer truncate"></select>
+        <svg class="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6"/></svg>
+      </div>
+
+      <button onclick="openGeneratorModal()" class="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-600 hover:to-indigo-700 text-white font-bold text-xs shadow-md shadow-sky-500/20 flex items-center justify-center gap-2 transition active:scale-[0.99]">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+        + Novo Edital / Buscador
+      </button>
+    </div>
+
+    <!-- Search Input -->
+    <div class="p-3 border-b border-slate-200 dark:border-slate-800/80 bg-slate-50/30 dark:bg-obsidian-950/30">
+      <div class="relative">
+        <svg class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" d="m21 21-4.35-4.35"/></svg>
+        <input id="search" type="text" placeholder="Filtrar disciplina ou assunto..." oninput="handleSearchInput()" class="w-full pl-9 pr-8 py-2 text-xs sm:text-sm rounded-xl bg-white dark:bg-obsidian-850 border border-slate-200 dark:border-slate-700/80 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition" />
+        <button id="clearSearchBtn" onclick="clearSearch()" title="Limpar busca" class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-white">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Navigation Tree -->
+    <nav id="menu" class="flex-1 overflow-y-auto p-3 space-y-2"></nav>
+
+    <!-- Sidebar Footer: Backup / Restore Progress -->
+    <div class="p-3 border-t border-slate-200 dark:border-slate-800/80 bg-slate-50/60 dark:bg-obsidian-950/40 flex items-center justify-between gap-2 text-xs">
+      <button onclick="exportBackup()" class="flex-1 flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-lg bg-white dark:bg-obsidian-800 border border-slate-200 dark:border-slate-700/80 text-slate-700 dark:text-slate-300 hover:border-sky-500/50 hover:text-sky-600 dark:hover:text-sky-400 font-medium transition">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+        Backup
+      </button>
+      <label class="flex-1 flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-lg bg-white dark:bg-obsidian-800 border border-slate-200 dark:border-slate-700/80 text-slate-700 dark:text-slate-300 hover:border-sky-500/50 hover:text-sky-600 dark:hover:text-sky-400 font-medium transition cursor-pointer">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+        Restaurar
+        <input type="file" accept=".json" onchange="importBackup(event)" class="hidden" />
+      </label>
+    </div>
+  </aside>
+
+  <!-- Main Content Area -->
+  <main id="main" class="flex-1 overflow-y-auto scroll-smooth">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+      
+      <!-- Top Bar: Breadcrumbs + Global Progress -->
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 mb-6 border-b border-slate-200 dark:border-slate-800/80">
+        <div class="min-w-0 flex-1">
+          <nav id="breadcrumbs" aria-label="Navegação estrutural" class="flex flex-wrap items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2"></nav>
+          <h1 id="pageTitle" class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-tight"></h1>
+          <p id="pageDesc" class="text-sm text-slate-600 dark:text-slate-400 mt-1.5 leading-relaxed"></p>
+        </div>
+
+        <!-- Compact Progress Pill Card -->
+        <div class="shrink-0 bg-white dark:bg-obsidian-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 sm:px-4 shadow-sm min-w-[225px]">
+          <div class="flex items-baseline justify-between gap-3">
+            <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Progresso Geral</span>
+            <span id="progressPct" class="font-mono text-lg font-extrabold text-sky-600 dark:text-sky-400">0%</span>
+          </div>
+          <div class="w-full h-2 bg-slate-100 dark:bg-obsidian-800 rounded-full overflow-hidden mt-2">
+            <div id="progressFill" class="h-full bg-gradient-to-r from-sky-500 to-emerald-400 rounded-full transition-all duration-500" style="width: 0%"></div>
+          </div>
+          <div class="flex items-center justify-between mt-2 text-xs text-slate-500 dark:text-slate-400">
+            <span id="progressText" class="font-mono">0 de 56 assuntos</span>
+            <span id="totalVideosBadge" class="font-mono text-[11px] opacity-80"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dynamic View Container -->
+      <div id="content" class="animate-view"></div>
+
+    </div>
+  </main>
+
+  <!-- =======================================================================
+       MODAL: GERADOR DE EDITAL & BUSCADOR DE AULAS (YOUTUBE DATA API V3)
+       ======================================================================= -->
+  <div id="generatorModal" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-sm overflow-y-auto">
+    <div class="min-h-screen px-3 sm:px-6 py-6 flex items-start justify-center">
+      <div class="bg-white dark:bg-obsidian-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden animate-view my-auto">
+        
+        <!-- Modal Header -->
+        <div class="px-5 sm:px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-obsidian-950/60 flex items-center justify-between gap-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-500 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-sky-500/20 shrink-0">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            </div>
+            <div>
+              <h2 class="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white leading-tight">Gerador de Edital & Buscador de Aulas</h2>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Cole o conteúdo programático do seu edital, busque ou cadastre vários links por tópico e salve na sua conta.</p>
+            </div>
+          </div>
+          <button onclick="closeGeneratorModal()" aria-label="Fechar gerador" class="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-obsidian-800 transition">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <!-- Modal Body -->
+        <div class="p-5 sm:p-6 space-y-6">
+          
+          <!-- Step 1: Configuration & Edital Input -->
+          <div class="bg-slate-50 dark:bg-obsidian-850/70 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4">
+            
+            <!-- YouTube API Key -->
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <label for="api-key" class="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                  Chave da API do YouTube (Data API v3)
+                </label>
+                <span class="text-[11px] font-medium text-emerald-600 dark:text-emerald-400">Padrão ativa · Editável por usuário</span>
+              </div>
+              <div class="relative">
+                <input type="password" id="api-key" oninput="saveApiKey(this.value)" placeholder="Cole sua API Key do Google Cloud aqui (AIzaSy...)" class="w-full pr-20 pl-3.5 py-2.5 text-sm rounded-xl bg-white dark:bg-obsidian-950 border border-slate-200 dark:border-slate-700/80 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition font-mono" />
+                <button type="button" onclick="toggleApiKeyVisibility()" id="toggleApiBtn" class="absolute right-2.5 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-obsidian-800 text-slate-600 dark:text-slate-300 hover:text-sky-500 transition">
+                  Mostrar
+                </button>
+              </div>
+            </div>
+
+            <!-- Modalidade & Subcategoria -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label for="categoria-id" class="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">Modalidade</label>
+                <select id="categoria-id" class="w-full px-3.5 py-2.5 text-sm rounded-xl bg-white dark:bg-obsidian-950 border border-slate-200 dark:border-slate-700/80 text-slate-900 dark:text-white focus:outline-none focus:border-sky-500 transition">
+                  <option value="concursos">Concursos Públicos</option>
+                  <option value="enem">ENEM</option>
+                  <option value="vestibulares">Vestibulares</option>
+                </select>
+              </div>
+              <div>
+                <label for="subcategoria-nome" class="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">Subcategoria</label>
+                <input type="text" id="subcategoria-nome" placeholder="Ex: Nível Médio, Nível Superior, Área Administrativa..." class="w-full px-3.5 py-2.5 text-sm rounded-xl bg-white dark:bg-obsidian-950 border border-slate-200 dark:border-slate-700/80 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-sky-500 transition" />
+              </div>
+            </div>
+
+            <!-- Nome do Concurso / Edital & Disciplina -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label for="edital-nome" class="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">Nome do Concurso / Edital *</label>
+                <input type="text" id="edital-nome" placeholder="Ex: ACE Porto Calvo, TRT 19ª Região, PRF..." class="w-full px-3.5 py-2.5 text-sm rounded-xl bg-white dark:bg-obsidian-950 border border-slate-200 dark:border-slate-700/80 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-sky-500 transition" />
+              </div>
+              <div>
+                <label for="disciplina-nome" class="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">Disciplina *</label>
+                <input type="text" id="disciplina-nome" placeholder="Ex: Português, Direito Constitucional, Informática..." class="w-full px-3.5 py-2.5 text-sm rounded-xl bg-white dark:bg-obsidian-950 border border-slate-200 dark:border-slate-700/80 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-sky-500 transition" />
+              </div>
+            </div>
+
+            <!-- Raw Edital Content -->
+            <div>
+              <label for="topicos-raw" class="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
+                Cole os Tópicos do Edital *
+              </label>
+              <textarea id="topicos-raw" rows="4" placeholder="Cole aqui o conteúdo programático numerado (ex: 1. Compreensão de textos. 2. Ortografia...) ou separado por ponto final..." class="w-full p-3.5 text-sm rounded-xl bg-white dark:bg-obsidian-950 border border-slate-200 dark:border-slate-700/80 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-sky-500 transition leading-relaxed"></textarea>
+            </div>
+
+            <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
+              <span class="text-xs text-slate-500 dark:text-slate-400">Dica: Se o edital já existir na sua conta, a nova disciplina será adicionada a ele.</span>
+              <button type="button" onclick="gerarListaTopicos()" class="px-5 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-600 text-white font-bold text-sm shadow-lg shadow-sky-500/20 inline-flex items-center gap-2 transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
+                Gerar Lista de Tópicos
+              </button>
+            </div>
+          </div>
+
+          <!-- Step 2: Progress & Batch Auto-Fill -->
+          <div id="section-progresso" class="hidden bg-slate-50 dark:bg-obsidian-850/70 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 class="text-sm font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">Progresso do Cadastro de Aulas</h3>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Pesquise automaticamente via API do YouTube ou adicione vários links manualmente por tópico.</p>
+              </div>
+              <button type="button" id="btn-auto-lote" onclick="buscarTodosAutomatico()" class="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-xs sm:text-sm shadow-md shadow-amber-500/20 inline-flex items-center justify-center gap-2 transition shrink-0">
+                ⚡ Auto-Preencher Lote (API)
+              </button>
+            </div>
+
+            <div>
+              <div class="w-full h-2.5 bg-slate-200 dark:bg-obsidian-950 rounded-full overflow-hidden border border-slate-300/60 dark:border-slate-800">
+                <div id="gen-progress-bar" class="h-full bg-emerald-500 rounded-full transition-all duration-300" style="width: 0%"></div>
+              </div>
+              <div class="flex items-center justify-between text-xs font-mono text-slate-500 dark:text-slate-400 mt-2">
+                <span id="gen-progress-text">0 / 0 tópicos com aula</span>
+                <span id="gen-progress-percent" class="font-bold text-emerald-600 dark:text-emerald-400">0%</span>
+              </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="flex flex-wrap items-center gap-2 pt-1">
+              <button type="button" class="gen-filter-btn px-3.5 py-1.5 rounded-full text-xs font-bold bg-sky-500 text-white border border-sky-500 transition" onclick="filtrarGerador('todas', this)">Todas</button>
+              <button type="button" class="gen-filter-btn px-3.5 py-1.5 rounded-full text-xs font-semibold bg-white dark:bg-obsidian-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-sky-500 transition" onclick="filtrarGerador('pendentes', this)">Pendentes</button>
+              <button type="button" class="gen-filter-btn px-3.5 py-1.5 rounded-full text-xs font-semibold bg-white dark:bg-obsidian-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-sky-500 transition" onclick="filtrarGerador('concluidas', this)">Concluídas</button>
+            </div>
+          </div>
+
+          <!-- Step 3: Generated Topics List -->
+          <div id="topics-list" class="space-y-3 max-h-[420px] overflow-y-auto pr-1"></div>
+
+          <!-- Step 4: Export & Save to Account -->
+          <div id="section-exportar" class="hidden pt-4 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3">
+            <button type="button" onclick="exportarListaTexto()" class="px-5 py-3 rounded-xl bg-slate-100 dark:bg-obsidian-800 hover:bg-slate-200 dark:hover:bg-obsidian-700 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 font-bold text-sm inline-flex items-center justify-center gap-2 transition">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+              Exportar Lista Formatada
+            </button>
+            <button type="button" onclick="salvarNaMinhaConta()" class="px-6 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-sm shadow-lg shadow-emerald-500/25 inline-flex items-center justify-center gap-2 transition">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+              Salvar na Minha Conta
+            </button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =======================================================================
+       SUB-MODAL: LISTA FORMATADA PARA EXPORTAÇÃO
+       ======================================================================= -->
+  <div id="modal-export" class="fixed inset-0 z-[70] hidden items-center justify-center bg-slate-950/80 backdrop-blur-xs p-4">
+    <div class="bg-white dark:bg-obsidian-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-2xl p-6 shadow-2xl space-y-4 animate-view">
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="text-lg font-extrabold text-slate-900 dark:text-white">Lista Gerada com Sucesso!</h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Copie o texto formatado abaixo com a estrutura do edital e links das aulas.</p>
+        </div>
+        <button onclick="fecharModalExport()" class="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <pre class="bg-slate-950 text-sky-300 border border-slate-800 rounded-xl p-4 overflow-x-auto max-h-80 text-xs font-mono whitespace-pre-wrap break-words leading-relaxed"><code id="json-output"></code></pre>
+      <div class="flex items-center justify-end gap-2.5 pt-2">
+        <button onclick="fecharModalExport()" class="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-obsidian-800 text-slate-700 dark:text-slate-300 text-sm font-semibold hover:bg-slate-200 dark:hover:bg-obsidian-700 transition">
+          Fechar
+        </button>
+        <button onclick="copiarExportacao()" class="px-4 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-600 text-white text-sm font-bold shadow-md shadow-sky-500/20 inline-flex items-center gap-2 transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+          Copiar Lista
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // =========================================================================
+    // DADOS PADRÃO: ASSISTENTE EM ADMINISTRAÇÃO · UFAL (5 DISCIPLINAS / 56 TÓPICOS)
+    // =========================================================================
+    const defaultUfalDisciplinas = [
+      {
+        "name": "Português",
+        "topics": [
+          {"title": "Aulas para se adquirir uma base do assunto: oração; predicado; sintaxe; tempos verbais", "videos": ["https://www.youtube.com/watch?v=L-HyRNdfIhU", "https://www.youtube.com/watch?v=3uH39VAnAv8", "https://www.youtube.com/watch?v=WZwRBcuf4hQ", "https://www.youtube.com/watch?v=WK6WqY3iRU8"]},
+          {"title": "Análise e interpretação de textos verbais e não verbais: compreensão geral do texto; elementos que compõem uma narrativa; tipos de discurso; ponto de vista ou ideia central defendida pelo autor; argumentação; elementos de coesão e coerência textuais; intertextualidade; inferências; estrutura e organização do texto e dos parágrafos", "videos": ["https://youtu.be/Z8v3Js8gfSA?feature=shared", "https://youtu.be/cHcFDNkxpmQ?feature=shared"]},
+          {"title": "Tipologia e gênero textuais", "videos": ["https://youtu.be/keri15mSleA?feature=shared"]},
+          {"title": "Funções da linguagem", "videos": ["https://youtu.be/c4yBSJzIqmg?feature=shared"]},
+          {"title": "Semântica: sinonímia e antonímia; homonímia e paronímia; conotação e denotação; ambiguidade; polissemia", "videos": ["https://youtu.be/QNAYFkJZZ2E?feature=shared", "https://youtu.be/ioV6UHngoBU?feature=shared", "https://youtu.be/ujuLR31WhEM?feature=shared", "https://youtu.be/ysfhpZTIWtA?feature=shared"]},
+          {"title": "Emprego dos pronomes demonstrativos", "videos": ["https://youtu.be/4LVbsP4v13c?feature=shared"]},
+          {"title": "Colocação pronominal", "videos": ["https://youtu.be/baP8RkBYRNw?feature=shared"]},
+          {"title": "Sintaxe da oração e do período (nexos oracionais das orações coordenadas e subordinadas", "videos": ["https://youtu.be/QBmeh_m26eQ?feature=shared"]},
+          {"title": "Vozes verbais", "videos": ["https://youtu.be/6NmZ2B9F5ZA?feature=shared"]},
+          {"title": "Emprego do acento indicativo da crase", "videos": ["https://youtu.be/bOwq8PFHuKU?feature=shared"]},
+          {"title": "Concordâncias verbal e nominal", "videos": ["https://youtu.be/s2T9Ap2J7u0?feature=shared", "https://youtu.be/Ssb7v6KIYt8?feature=shared"]},
+          {"title": "Regências verbal e nominal", "videos": ["https://youtu.be/oziOOkwah2E?feature=shared", "https://youtu.be/ZGsd7O4Jge0?feature=shared"]},
+          {"title": "Emprego dos sinais de pontuação", "videos": ["https://youtu.be/VOR0QAv_gaM?feature=shared"]},
+          {"title": "Ortografia oficial", "videos": ["https://www.youtube.com/live/H-QUPE-GY4Q?feature=shared"]}
+        ]
+      },
+      {
+        "name": "Raciocínio Lógico",
+        "topics": [
+          {"title": "Lógica proposicional: proposições simbólicas (fórmulas bem formadas); tabela verdade e classificação de fórmulas", "videos": ["https://www.youtube.com/watch?v=GUIkwTSgDQM&list=PL1Ee2FHVjbenML6517aFku9mX-bPHJUY6&index=1"]},
+          {"title": "Lógica de predicados de primeira ordem: fórmulas quantificadas", "videos": ["https://www.youtube.com/watch?v=gMpi4HO2cnY&list=PLpGHF_AAwOMGi-ZGBsBGr_ikixc8xnBWU"]},
+          {"title": "Argumentos válidos e sofismas", "videos": ["https://youtu.be/lXn8vXqNVTE?feature=shared"]},
+          {"title": "Conjuntos: operações, diagramas de Venn", "videos": ["https://youtu.be/DHKa-tekYzY?feature=shared"]},
+          {"title": "O conjunto dos números inteiros: desigualdades; divisibilidade e fatoração no conjunto dos inteiros; máximo divisor comum; mínimo múltiplo comum", "videos": ["https://youtu.be/fAKwRRptIJo?feature=shared", "https://youtu.be/QPhp7NDwzNs?feature=shared", "https://youtu.be/Lh_oYa3qIkA?feature=shared", "https://youtu.be/MK4cSSdNTHo?feature=shared", "https://youtu.be/PmlNQeBfp7I?feature=shared"]},
+          {"title": "O conjunto dos números reais: razões e proporções; porcentagem", "videos": ["https://youtu.be/Kf_YzZ0CnIs?feature=shared", "https://youtu.be/azedx0uou64?feature=shared"]},
+          {"title": "Raciocínio lógico sequencial", "videos": ["https://www.youtube.com/live/EPSGdRIoP7E?feature=shared"]},
+          {"title": "Resolução de problemas envolvendo princípios de contagens", "videos": ["https://youtu.be/xC9RNdce-mg?feature=shared"]},
+          {"title": "Probabilidade", "videos": ["https://youtu.be/iNCkGogNtKI?feature=shared"]},
+          {"title": "Noções básicas de Estatística: análise e interpretação de dados apresentados em gráficos e tabelas; média, moda e mediana de uma série de dados", "videos": ["https://youtu.be/GDEkkbwvhNg?feature=shared", "https://youtu.be/GIzwKJL33_g?feature=shared"]},
+          {"title": "Compreensão de textos matemáticos", "videos": ["https://youtu.be/CmmLisJec08?feature=shared"]}
+        ]
+      },
+      {
+        "name": "Fundamentos da Administração Pública",
+        "topics": [
+          {"title": "Administração pública e governo: conceito e objetivos", "videos": ["https://youtu.be/HRfhsP_zDhQ?feature=shared"]},
+          {"title": "Evolução dos modelos de Administração Pública", "videos": ["https://www.youtube.com/watch?v=F2sWfMG0w90&list=PLPjPQR5HICvV_w93FH1cchGBZmZ5rMvjk"]},
+          {"title": "Regime jurídico administrativo na Constituição Federal de 1988: princípios constitucionais do direito administrativo brasileiro", "videos": ["https://youtu.be/Y_m2s4TXPyM?feature=shared"]},
+          {"title": "Serviços públicos: conceito; características; classificação; titularidade; princípios", "videos": ["https://youtu.be/b6_n2V53dLY?feature=shared", "https://youtu.be/sH1JjPig8-8?feature=shared"]},
+          {"title": "Ética no serviço público: comportamento profissional, atitudes no serviço, organização do trabalho, prioridade em serviço", "videos": ["https://youtu.be/uTO9GAbQldE?feature=shared", "https://youtu.be/9j-ssma3s8w?feature=shared"]},
+          {"title": "Regime jurídico dos servidores públicos civis da União, das autarquias e das fundações públicas federais (Lei Federal nº 8.112, de 11 de dezembro de 1990 e suas alterações)", "videos": ["https://www.youtube.com/live/JWd6y2HnBgc?feature=shared", "https://youtu.be/yKtte_WyK3w?feature=shared", "https://youtu.be/hcfm6CN3Vq8?feature=shared"]},
+          {"title": "Poderes administrativos: poder hierárquico; poder disciplinar; poder regulamentar; poder de polícia; uso e abuso do poder", "videos": ["https://youtu.be/O7i0u_JSTvk?feature=shared", "https://youtu.be/kG_Ldb07Dq8?feature=shared"]},
+          {"title": "Improbidade Administrativa: dever de eficiência; dever de probidade; dever de prestar contas (Lei nº 8.429, de 02 de junho de 1992 e suas alterações)", "videos": ["https://www.youtube.com/live/cs5IsrqykXE?feature=shared"]},
+          {"title": "Processo administrativo no âmbito da Administração Pública Federal (Lei Federal nº 9.784, de 29 de janeiro de 1999 e suas alterações)", "videos": ["https://www.youtube.com/live/JvyuHXnHWZM?feature=shared"]},
+          {"title": "Noções de Licitação (Lei Federal nº 14.133, de 1° de abril de 2021 e suas alterações): normas gerais de licitação; conceito; finalidades; princípios; objeto e modalidades", "videos": ["https://youtu.be/6V80zKVejHU?feature=shared"]},
+          {"title": "Contrato administrativo: noções gerais; elementos; características; formalização; cláusulas exorbitantes; alteração; execução e inexecução; revisão, rescisão, reajustamento e prorrogação; desfazimento; controle; modalidades; convênios e consórcios administrativos", "videos": ["https://youtu.be/dPkCh1I0XPY?feature=shared"]},
+          {"title": "Lei Geral de Proteção de Dados Pessoais – LGPD (Lei Federal nº 13.709, de 14 de agosto de 2018 e suas alterações)", "videos": ["https://youtu.be/XbuniaIh_Tc?feature=shared"]},
+          {"title": "Lei de Acesso à Informação – LAI (Lei Federal nº 12.527, de 18 de novembro de 2011 e suas alterações)", "videos": ["https://www.youtube.com/live/kdj7QA1z5ms?feature=shared", "https://youtu.be/4pmxaESSBKw?feature=shared"]}
+        ]
+      },
+      {
+        "name": "Informática",
+        "topics": [
+          {"title": "Conceitos relacionados a hardware, software, computadores e periféricos", "videos": ["https://youtu.be/YrDLtdP4LI4?feature=shared"]},
+          {"title": "Conceitos relacionados ao ambiente Microsoft Windows (versões 8, 10 e 11), uso do ambiente gráfico, aplicativos, acessórios, execução de programas e suas funcionalidades: ícones, teclas de atalho, janelas, menus, arquivos, pastas e programas", "videos": ["https://youtu.be/MkVvtFSxpNg?feature=shared"]},
+          {"title": "Conceitos e conhecimentos na utilização das ferramentas, recursos dos pacotes de aplicativos LibreOffice (versão 24) e Microsoft Office (versão 2019): editores de texto, de planilhas de cálculo/eletrônicas, de apresentações eletrônicas e gerenciador de e-mails", "videos": ["https://www.youtube.com/live/bKSoTsPlOJo?feature=shared", "https://youtu.be/et2qWWa0kTA?feature=shared", "https://youtu.be/ixrDPjkENEc?feature=shared"]},
+          {"title": "Conceitos, arquitetura e utilização de intranet e internet: navegadores (Microsoft Edge 123 e Google Chrome 123), sites de busca e pesquisa, grupos de discussão, redes sociais, segurança em rede e na internet (antivírus, firewall e antispyware), produção, manipulação e organização de e-mails", "videos": ["https://youtu.be/A9P2WusFQU0?feature=shared", "https://youtu.be/AKRJ6wYPryw?feature=shared", "https://youtu.be/QufHod-yZIk?feature=shared"]},
+          {"title": "Conceitos básicos de tarefas e procedimentos de informática: armazenamento de dados e realização de cópia de segurança (backup), dispositivos de armazenamento, organização e gerenciamento de arquivos, pastas e programas, compartilhamentos, impressão e área de transferência", "videos": ["https://youtu.be/ZofIynFIjrc?feature=shared", "https://youtu.be/UY3vyeQc_XI?feature=shared", "https://youtu.be/EHeiseC1GJ0?feature=shared", "https://youtu.be/abGqdpsFL9A?feature=shared"]}
+        ]
+      },
+      {
+        "name": "Conhecimentos Específicos — Assistente em Administração",
+        "topics": [
+          {"title": "Administração: a administração e suas perspectivas; antecedentes históricos; abordagens da teoria geral da administração", "videos": ["https://www.youtube.com/watch?v=tqVSaxIzziA&list=PLzc511QzCze9kwfMjEpC8Ye_MzTtlT2Cf", "https://www.youtube.com/watch?v=9jzs5S-tnHw&list=PLPjPQR5HICvXhmuMSaVvx-WQGcmqZ4KfL"]},
+          {"title": "Funções da administração: planejamento, organização, direção e controle", "videos": ["https://youtu.be/X9j2xGTELbs?feature=shared"]},
+          {"title": "Organizações: fundamentos, estruturas organizacionais tradicionais, tendências e práticas organizacionais", "videos": ["https://youtu.be/gvYdpnYWqdc?feature=shared"]},
+          {"title": "Noções de logística e suprimentos", "videos": ["https://youtu.be/xNT3Lbh8fT4?feature=shared"]},
+          {"title": "Noções de planejamento estratégico", "videos": ["https://youtu.be/SLzjeav8Vgo?feature=shared"]},
+          {"title": "Noções de Comportamento Organizacional: comunicação; liderança; motivação; grupos; equipes; cultura organizacional", "videos": ["https://youtu.be/VP2HCgXTwQc?feature=shared", "https://youtu.be/Ki9Ez-xiy0E?feature=shared"]},
+          {"title": "Noções de RH: recrutamento; seleção; treinamento; desenvolvimento; relações interpessoais", "videos": ["https://youtu.be/r1xqMjl6bYg?feature=shared"]},
+          {"title": "Noções de administração pública: organizações públicas; política e planejamento governamentais; patrimônio público; gestão de processos e gestão de projetos aplicado ao Setor Público", "videos": ["https://www.youtube.com/live/HB-TD1n5C9A?feature=shared"]},
+          {"title": "Noções de contabilidade pública, orçamento público e finanças públicas", "videos": ["https://youtu.be/FoC1uQXUp8U?feature=shared", "https://youtu.be/WLIy7ra1Ze4?feature=shared"]},
+          {"title": "Noções de arquivamento", "videos": ["https://www.youtube.com/watch?v=ns5UVXoPyHk&list=PLrqB0tn-lgbN4T0WXb2FNzoV1YTDl6dyq&index=3"]},
+          {"title": "Redação oficial", "videos": ["https://www.youtube.com/watch?v=VISNlsOGdxU&list=PLUEG18fygJNIxUsnx5YnkGtKIyRJWsLh-"]},
+          {"title": "Estatuto e Regimento Geral da UFAL", "videos": ["https://www.youtube.com/watch?v=j9YTQKds_hg&list=PLq_dTqrrG6QLDu4ztWrcsRDBa_nBf4nkP", "https://www.youtube.com/watch?v=kIjr3tqbmiQ&list=PLq_dTqrrG6QKEPvr3pE9PdLkFztHYMlgZ"]},
+          {"title": "Projeto Pedagógico Institucional (PPI) da UFAL", "videos": ["https://youtu.be/RkIVLvLWTiU?feature=shared"]}
+        ]
+      }
+    ];
+
+    const DEFAULT_COURSE_ID = 'ufal-assistente-adm';
+
+    function createDefaultUfalCourse() {
+      return {
+        id: DEFAULT_COURSE_ID,
+        name: 'Assistente em Administração · UFAL',
+        modalidade: 'Concursos Públicos',
+        subcategoria: 'Nível Médio / Técnico Administrativo',
+        isDefault: true,
+        disciplinas: JSON.parse(JSON.stringify(defaultUfalDisciplinas))
+      };
+    }
+
+    // =========================================================================
+    // PALETA DE CORES & ÍCONES DINÂMICOS PARA AS DISCIPLINAS
+    // =========================================================================
+    const subjectPalette = [
+      {
+        badgeBg: "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20",
+        barColor: "bg-sky-500",
+        icon: `<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>`
+      },
+      {
+        badgeBg: "bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20",
+        barColor: "bg-violet-500",
+        icon: `<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>`
+      },
+      {
+        badgeBg: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
+        barColor: "bg-amber-500",
+        icon: `<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11m16-11v11M8 14v3m4-3v3m4-3v3"/></svg>`
+      },
+      {
+        badgeBg: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20",
+        barColor: "bg-cyan-500",
+        icon: `<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path stroke-linecap="round" d="M8 21h8m-4-4v4"/></svg>`
+      },
+      {
+        badgeBg: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+        barColor: "bg-emerald-500",
+        icon: `<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>`
+      },
+      {
+        badgeBg: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
+        barColor: "bg-rose-500",
+        icon: `<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>`
+      }
+    ];
+
+    function getSubjectMeta(i, name) {
+      const style = subjectPalette[i % subjectPalette.length];
+      let shortName = name;
+      if (name === "Fundamentos da Administração Pública") shortName = "Adm. Pública";
+      else if (name === "Conhecimentos Específicos — Assistente em Administração") shortName = "Conhecimentos Específicos";
+      return { ...style, shortName };
+    }
+
+    // =========================================================================
+    // ESTADO GLOBAL & STORAGE (COMPATÍVEL COM 'estudo_admin_ufal_v1' + MULTI-CONCURSOS)
+    // =========================================================================
+    const $ = id => document.getElementById(id);
+    const legacyStorageKey = 'estudo_admin_ufal_v1';
+    const accountStorageKey = 'estudo_em_foco_account_v2';
+    const apiKeyStorageKey = 'estudo_em_foco_yt_api_key';
+    const themeKey = 'estudo_admin_ufal_theme';
+
+    let account = {
+      activeCourseId: DEFAULT_COURSE_ID,
+      courses: [createDefaultUfalCourse()],
+      progress: {
+        [DEFAULT_COURSE_ID]: { done: {}, notes: {}, lastTopic: null }
+      }
+    };
+
+    function loadAccountState() {
+      try {
+        const savedAccount = JSON.parse(localStorage.getItem(accountStorageKey) || 'null');
+        const legacySaved = JSON.parse(localStorage.getItem(legacyStorageKey) || 'null');
+
+        if (savedAccount && Array.isArray(savedAccount.courses) && savedAccount.courses.length > 0) {
+          account = {
+            activeCourseId: savedAccount.activeCourseId || savedAccount.courses[0].id,
+            courses: savedAccount.courses,
+            progress: savedAccount.progress || {}
+          };
+          if (!account.courses.some(c => c.id === DEFAULT_COURSE_ID)) {
+            account.courses.unshift(createDefaultUfalCourse());
+          }
+        } else if (legacySaved && typeof legacySaved === 'object') {
+          account.progress[DEFAULT_COURSE_ID] = {
+            done: legacySaved.done || {},
+            notes: legacySaved.notes || {},
+            lastTopic: legacySaved.lastTopic || null
+          };
+        }
+
+        account.courses.forEach(c => {
+          if (!account.progress[c.id]) {
+            account.progress[c.id] = { done: {}, notes: {}, lastTopic: null };
+          }
+          (c.disciplinas || []).forEach(d => {
+            (d.topics || []).forEach(t => {
+              if (!Array.isArray(t.videos)) t.videos = [];
+            });
+          });
+        });
+
+        if (!account.courses.some(c => c.id === account.activeCourseId)) {
+          account.activeCourseId = account.courses[0].id;
+        }
+      } catch (e) {
+        console.warn('Erro ao carregar dados da conta:', e);
+      }
+    }
+
+    loadAccountState();
+
+    function getActiveCourse() {
+      return account.courses.find(c => c.id === account.activeCourseId) || account.courses[0];
+    }
+
+    function getActiveDisciplinas() {
+      return getActiveCourse().disciplinas || [];
+    }
+
+    function getActiveProgress() {
+      const cid = getActiveCourse().id;
+      if (!account.progress[cid]) {
+        account.progress[cid] = { done: {}, notes: {}, lastTopic: null };
+      }
+      return account.progress[cid];
+    }
+
+    let expandedDisciplines = { 0: true };
+    let disciplinaAtual = null;
+    let topicoAtual = null;
+    let videoAtual = 0;
+
+    function key(i, j) {
+      return `${i}-${j}`;
+    }
+
+    function saveAccountState() {
+      try {
+        localStorage.setItem(accountStorageKey, JSON.stringify(account));
+        if (account.progress[DEFAULT_COURSE_ID]) {
+          localStorage.setItem(legacyStorageKey, JSON.stringify(account.progress[DEFAULT_COURSE_ID]));
+        }
+      } catch (e) {
+        console.warn('Erro ao salvar estado:', e);
+      }
+      updateProgress();
+    }
+
+    function showToast(message, isSuccess = true) {
+      const toast = $('toast');
+      const icon = $('toastIcon');
+      $('toastMsg').textContent = message;
+      icon.innerHTML = isSuccess
+        ? `<svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>`
+        : `<svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>`;
+      toast.classList.remove('opacity-0', 'translate-y-3');
+      clearTimeout(window._toastTimer);
+      window._toastTimer = setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-3');
+      }, 3200);
+    }
+
+    // =========================================================================
+    // MODAL DE CONFIRMAÇÃO CUSTOMIZADO (SEM CONFIRM NATIVO)
+    // =========================================================================
+    function openConfirmModal(title, message, onConfirm) {
+      $('confirmTitle').textContent = title;
+      $('confirmMessage').textContent = message;
+      const modal = $('confirmModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      $('confirmActionBtn').onclick = () => {
+        closeConfirmModal();
+        onConfirm();
+      };
+    }
+
+    function closeConfirmModal() {
+      const modal = $('confirmModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    // =========================================================================
+    // TEMA CLARO / ESCURO
+    // =========================================================================
+    function initTheme() {
+      const savedTheme = localStorage.getItem(themeKey);
+      if (savedTheme === 'light') {
+        document.documentElement.classList.remove('dark');
+      } else {
+        document.documentElement.classList.add('dark');
+      }
+    }
+
+    function toggleTheme() {
+      const isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem(themeKey, isDark ? 'dark' : 'light');
+    }
+
+    // =========================================================================
+    // SELETOR DE CONCURSOS / CONTA DO USUÁRIO
+    // =========================================================================
+    function renderCourseSelector() {
+      const selector = $('courseSelector');
+      const activeCourse = getActiveCourse();
+      selector.innerHTML = account.courses.map(c => `
+        <option value="${escapeHtml(c.id)}" ${c.id === activeCourse.id ? 'selected' : ''}>
+          ${escapeHtml(c.name)} (${c.disciplinas.length} disc.)
+        </option>
+      `).join('');
+
+      const delBtn = $('deleteCourseBtn');
+      if (activeCourse.isDefault) {
+        delBtn.classList.add('hidden');
+      } else {
+        delBtn.classList.remove('hidden');
+      }
+    }
+
+    function switchCourse(courseId) {
+      account.activeCourseId = courseId;
+      disciplinaAtual = null;
+      topicoAtual = null;
+      expandedDisciplines = { 0: true };
+      saveAccountState();
+      renderCourseSelector();
+      updateProgress();
+      renderHome();
+      showToast(`Concurso ativo: ${getActiveCourse().name}`, true);
+    }
+
+    function confirmDeleteCourse() {
+      const activeCourse = getActiveCourse();
+      if (activeCourse.isDefault) return;
+
+      openConfirmModal(
+        'Excluir concurso cadastrado?',
+        `Tem certeza que deseja remover "${activeCourse.name}" e todo o seu progresso/anotações associados? Esta ação não pode ser desfeita.`,
+        () => {
+          const deletedId = activeCourse.id;
+          account.courses = account.courses.filter(c => c.id !== deletedId);
+          delete account.progress[deletedId];
+          account.activeCourseId = account.courses[0].id;
+          disciplinaAtual = null;
+          topicoAtual = null;
+          expandedDisciplines = { 0: true };
+          saveAccountState();
+          renderCourseSelector();
+          updateProgress();
+          renderHome();
+          showToast('Concurso removido da sua conta.', true);
+        }
+      );
+    }
+
+    // =========================================================================
+    // CÁLCULO DE PROGRESSO DO CONCURSO ATIVO
+    // =========================================================================
+    function getDisciplineStats(i) {
+      const disciplinas = getActiveDisciplinas();
+      const prog = getActiveProgress();
+      const topics = disciplinas[i]?.topics || [];
+      let doneCount = 0;
+      let videosCount = 0;
+      topics.forEach((t, j) => {
+        if (prog.done[key(i, j)]) doneCount++;
+        videosCount += (t.videos?.length || 0);
+      });
+      const pct = topics.length ? Math.round((doneCount / topics.length) * 100) : 0;
+      return { doneCount, total: topics.length, videosCount, pct };
+    }
+
+    function updateProgress() {
+      const disciplinas = getActiveDisciplinas();
+      const prog = getActiveProgress();
+      let totalTopics = 0;
+      let totalVideos = 0;
+      let doneCount = 0;
+
+      disciplinas.forEach((d, i) => {
+        totalTopics += d.topics.length;
+        d.topics.forEach((t, j) => {
+          totalVideos += (t.videos?.length || 0);
+          if (prog.done[key(i, j)]) doneCount++;
+        });
+      });
+
+      const pct = totalTopics ? Math.round((doneCount / totalTopics) * 100) : 0;
+      $('progressPct').textContent = `${pct}%`;
+      $('progressFill').style.width = `${pct}%`;
+      $('progressText').textContent = `${doneCount} de ${totalTopics} assuntos`;
+      $('totalVideosBadge').textContent = `${totalVideos} aulas`;
+      $('mobilePctBadge').textContent = `${pct}%`;
+    }
+
+    // =========================================================================
+    // CONTROLE DO MENU LATERAL & BUSCA
+    // =========================================================================
+    function toggleSidebar() {
+      $('sidebar').classList.toggle('-translate-x-full');
+      $('overlay').classList.toggle('hidden');
+    }
+
+    function closeSidebar() {
+      $('sidebar').classList.add('-translate-x-full');
+      $('overlay').classList.add('hidden');
+    }
+
+    function handleSearchInput() {
+      const val = $('search').value;
+      $('clearSearchBtn').classList.toggle('hidden', !val.length);
+      renderMenu();
+    }
+
+    function clearSearch() {
+      $('search').value = '';
+      $('clearSearchBtn').classList.add('hidden');
+      renderMenu();
+      $('search').focus();
+    }
+
+    function toggleAccordion(i) {
+      expandedDisciplines[i] = !expandedDisciplines[i];
+      renderMenu();
+    }
+
+    function renderMenu() {
+      const disciplinas = getActiveDisciplinas();
+      const prog = getActiveProgress();
+      const q = $('search').value.trim().toLocaleLowerCase('pt-BR');
+      let html = '';
+
+      disciplinas.forEach((d, i) => {
+        const meta = getSubjectMeta(i, d.name);
+        const stats = getDisciplineStats(i);
+        const subjectMatches = d.name.toLocaleLowerCase('pt-BR').includes(q);
+        const hits = d.topics
+          .map((t, j) => ({ t, j }))
+          .filter(item => !q || subjectMatches || item.t.title.toLocaleLowerCase('pt-BR').includes(q));
+
+        if (!hits.length) return;
+
+        const isExpanded = q.length > 0 ? true : !!expandedDisciplines[i];
+        const isCurrentDisc = disciplinaAtual === i;
+
+        html += `
+          <div class="rounded-xl border ${isCurrentDisc ? 'border-sky-500/40 bg-slate-100/70 dark:bg-obsidian-850/90' : 'border-transparent hover:border-slate-200 dark:hover:border-slate-800'} transition-colors overflow-hidden">
+            <div class="flex items-center justify-between gap-1 p-1.5">
+              <button onclick="selectDiscipline(${i})" class="flex-1 flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-left min-w-0 group">
+                <span class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border ${meta.badgeBg}">
+                  ${meta.icon}
+                </span>
+                <div class="min-w-0 flex-1">
+                  <div class="text-xs font-bold text-slate-800 dark:text-slate-100 group-hover:text-sky-600 dark:group-hover:text-sky-400 truncate transition-colors" title="${escapeHtml(d.name)}">
+                    ${escapeHtml(meta.shortName)}
+                  </div>
+                  <div class="flex items-center gap-2 mt-1">
+                    <div class="flex-1 h-1 bg-slate-200 dark:bg-obsidian-800 rounded-full overflow-hidden">
+                      <div class="h-full ${meta.barColor} rounded-full transition-all duration-300" style="width: ${stats.pct}%"></div>
+                    </div>
+                    <span class="font-mono text-[10px] font-semibold text-slate-500 dark:text-slate-400 shrink-0">${stats.doneCount}/${stats.total}</span>
+                  </div>
+                </div>
+              </button>
+
+              <button onclick="toggleAccordion(${i})" aria-label="Expandir tópicos" class="p-2 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-obsidian-800 transition">
+                <svg class="w-4 h-4 transform transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6"/></svg>
+              </button>
+            </div>
+
+            ${isExpanded ? `
+              <div class="px-2 pb-2 pt-1 space-y-1 border-t border-slate-200/60 dark:border-slate-800/70">
+                ${hits.map(({ t, j }) => {
+                  const done = !!prog.done[key(i, j)];
+                  const hasNote = !!(prog.notes[key(i, j)] && prog.notes[key(i, j)].trim());
+                  const hasVideos = Array.isArray(t.videos) && t.videos.length > 0;
+                  const active = disciplinaAtual === i && topicoAtual === j;
+                  return `
+                    <button onclick="selectTopic(${i}, ${j})" class="w-full flex items-start gap-2.5 px-2.5 py-2 rounded-lg text-left text-xs leading-snug transition-all ${
+                      active
+                        ? 'bg-sky-500 text-white font-semibold shadow-sm shadow-sky-500/25'
+                        : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-obsidian-800'
+                    }">
+                      <span class="mt-0.5 shrink-0">
+                        ${done
+                          ? `<svg class="w-4 h-4 ${active ? 'text-white' : 'text-emerald-500'}" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>`
+                          : `<span class="w-3.5 h-3.5 rounded-full border ${active ? 'border-white/80' : 'border-slate-400 dark:border-slate-600'} inline-block"></span>`
+                        }
+                      </span>
+                      <span class="flex-1 line-clamp-2">${escapeHtml(t.title)}</span>
+                      ${!hasVideos ? `<span title="Sem link de aula" class="shrink-0 mt-0.5 text-[10px] font-bold px-1.5 py-0.2 rounded ${active ? 'bg-white/20 text-white' : 'bg-amber-500/15 text-amber-600 dark:text-amber-400'}">+link</span>` : ''}
+                      ${hasNote ? `<span title="Possui anotações" class="shrink-0 mt-0.5 ${active ? 'text-white/90' : 'text-amber-500'}"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></span>` : ''}
+                    </button>
+                  `;
+                }).join('')}
+              </div>
+            ` : ''}
+          </div>
+        `;
+      });
+
+      $('menu').innerHTML = html || `
+        <div class="text-center py-10 px-4">
+          <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Nenhum assunto encontrado para "${escapeHtml(q)}".</p>
+          <button onclick="clearSearch()" class="mt-3 text-xs font-semibold text-sky-500 hover:underline">Limpar filtro</button>
+        </div>
+      `;
+    }
+
+    // =========================================================================
+    // RENDERIZAÇÃO: PAINEL INICIAL (HOME DASHBOARD)
+    // =========================================================================
+    function renderHome() {
+      disciplinaAtual = null;
+      topicoAtual = null;
+
+      const course = getActiveCourse();
+      const disciplinas = getActiveDisciplinas();
+      const prog = getActiveProgress();
+
+      const metaTag = [course.modalidade, course.subcategoria].filter(Boolean).join(' · ') || 'Edital Verticalizado';
+      $('breadcrumbs').innerHTML = `<span>${escapeHtml(metaTag)}</span>`;
+      $('pageTitle').textContent = course.name;
+      $('pageDesc').textContent = 'Acompanhe seu progresso por disciplina, assista às videoaulas organizadas por tópico e salve suas anotações de revisão.';
+
+      let resumeCardHtml = '';
+      if (prog.lastTopic && disciplinas[prog.lastTopic.i]?.topics[prog.lastTopic.j]) {
+        const { i, j } = prog.lastTopic;
+        const lastDisc = disciplinas[i];
+        const lastTop = lastDisc.topics[j];
+        const isDone = !!prog.done[key(i, j)];
+        resumeCardHtml = `
+          <div class="mb-7 rounded-2xl bg-gradient-to-r from-sky-500/10 via-indigo-500/10 to-purple-500/10 dark:from-sky-500/15 dark:via-indigo-500/10 dark:to-obsidian-900 border border-sky-500/30 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div class="min-w-0">
+              <div class="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400 mb-1.5">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                Continuar de onde parou
+              </div>
+              <h3 class="font-bold text-slate-900 dark:text-white text-base line-clamp-1">${escapeHtml(lastTop.title)}</h3>
+              <p class="text-xs text-slate-600 dark:text-slate-400 mt-1">${escapeHtml(lastDisc.name)} · Assunto ${j + 1} ${isDone ? '· <span class="text-emerald-500 font-semibold">Concluído</span>' : ''}</p>
+            </div>
+            <button onclick="selectTopic(${i}, ${j})" class="shrink-0 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-600 text-white font-semibold text-sm shadow-lg shadow-sky-500/25 transition">
+              Retomar Aula
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+            </button>
+          </div>
+        `;
+      }
+
+      const cardsHtml = disciplinas.map((d, i) => {
+        const meta = getSubjectMeta(i, d.name);
+        const stats = getDisciplineStats(i);
+        return `
+          <button onclick="selectDiscipline(${i})" class="group text-left bg-white dark:bg-obsidian-900 border border-slate-200 dark:border-slate-800 hover:border-sky-500/50 dark:hover:border-sky-500/50 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+            <div>
+              <div class="flex items-start justify-between gap-3 mb-4">
+                <div class="w-11 h-11 rounded-xl flex items-center justify-center border ${meta.badgeBg} group-hover:scale-105 transition-transform">
+                  ${meta.icon}
+                </div>
+                <span class="font-mono text-xs font-bold px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-obsidian-800 text-slate-600 dark:text-slate-300">
+                  ${stats.pct}%
+                </span>
+              </div>
+              <h3 class="font-bold text-base text-slate-900 dark:text-white group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors leading-snug">
+                ${escapeHtml(d.name)}
+              </h3>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-1.5">
+                ${stats.total} assuntos · ${stats.videosCount} videoaulas
+              </p>
+            </div>
+
+            <div class="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800/80">
+              <div class="flex items-center justify-between text-xs mb-1.5">
+                <span class="text-slate-500 dark:text-slate-400 font-medium">Concluídos</span>
+                <span class="font-mono font-bold text-slate-700 dark:text-slate-200">${stats.doneCount}/${stats.total}</span>
+              </div>
+              <div class="w-full h-1.5 bg-slate-100 dark:bg-obsidian-800 rounded-full overflow-hidden">
+                <div class="h-full ${meta.barColor} rounded-full transition-all duration-500" style="width: ${stats.pct}%"></div>
+              </div>
+            </div>
+          </button>
+        `;
+      }).join('');
+
+      $('content').innerHTML = `
+        <div class="animate-view">
+          ${resumeCardHtml}
+
+          <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <div>
+              <h2 class="text-lg font-bold text-slate-900 dark:text-white">Disciplinas do Edital</h2>
+              <p class="text-xs text-slate-500 dark:text-slate-400">${disciplinas.length} ${disciplinas.length === 1 ? 'módulo disponível' : 'módulos disponíveis'}</p>
+            </div>
+            <button onclick="openGeneratorModal(true)" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-sky-500/10 hover:bg-sky-500 text-sky-600 dark:text-sky-400 hover:text-white border border-sky-500/25 text-xs font-bold transition">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+              Adicionar Disciplina / Novo Edital
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mb-8">
+            ${cardsHtml}
+          </div>
+
+          <div class="bg-white dark:bg-obsidian-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 sm:p-6">
+            <div class="flex items-start gap-3.5">
+              <div class="w-9 h-9 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0 mt-0.5">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" d="M12 16v-4M12 8h.01"/></svg>
+              </div>
+              <div class="text-sm text-slate-600 dark:text-slate-400 space-y-2 leading-relaxed">
+                <h3 class="font-bold text-slate-900 dark:text-white text-base">Personalize tópicos e aulas livremente</h3>
+                <p>Dentro de qualquer disciplina, clique em <strong>+ Novo Tópico</strong> para adicionar assuntos manualmente. Em qualquer tópico — com ou sem link — você pode adicionar <strong>um ou vários links de aula</strong> manualmente.</p>
+                <p>Seu progresso, tópicos criados, links cadastrados e anotações ficam salvos localmente no navegador e podem ser exportados a qualquer momento pelo botão <strong>Backup</strong>.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      renderMenu();
+      $('main').scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // =========================================================================
+    // RENDERIZAÇÃO: VISÃO DA DISCIPLINA (LISTA DE TÓPICOS + NOVO TÓPICO)
+    // =========================================================================
+    function selectDiscipline(i) {
+      disciplinaAtual = i;
+      topicoAtual = null;
+      expandedDisciplines[i] = true;
+
+      const disciplinas = getActiveDisciplinas();
+      const prog = getActiveProgress();
+      const d = disciplinas[i];
+      const meta = getSubjectMeta(i, d.name);
+      const stats = getDisciplineStats(i);
+
+      $('breadcrumbs').innerHTML = `
+        <button onclick="renderHome()" class="hover:text-sky-500 transition-colors">Início</button>
+        <span>/</span>
+        <span class="text-sky-600 dark:text-sky-400">${escapeHtml(meta.shortName)}</span>
+      `;
+      $('pageTitle').textContent = d.name;
+      $('pageDesc').textContent = `${stats.doneCount} de ${stats.total} assuntos concluídos (${stats.pct}%) · ${stats.videosCount} videoaulas mapeadas.`;
+
+      const topicsHtml = d.topics.length
+        ? d.topics.map((t, j) => {
+            const isDone = !!prog.done[key(i, j)];
+            const hasNote = !!(prog.notes[key(i, j)] && prog.notes[key(i, j)].trim());
+            const vCount = t.videos?.length || 0;
+
+            return `
+              <div class="group bg-white dark:bg-obsidian-900 border ${isDone ? 'border-emerald-500/30' : 'border-slate-200 dark:border-slate-800'} hover:border-sky-500/50 rounded-2xl p-4 sm:p-5 transition-all flex items-start gap-4 shadow-xs">
+                <button onclick="toggleDoneFromList(event, ${i}, ${j})" title="${isDone ? 'Desmarcar conclusão' : 'Marcar como estudado'}" class="mt-0.5 w-6 h-6 rounded-lg border flex items-center justify-center shrink-0 transition ${
+                  isDone
+                    ? 'bg-emerald-500 border-emerald-500 text-white shadow-sm shadow-emerald-500/30'
+                    : 'border-slate-300 dark:border-slate-600 hover:border-emerald-500 text-transparent'
+                }">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                </button>
+
+                <button onclick="selectTopic(${i}, ${j})" class="flex-1 text-left min-w-0">
+                  <div class="flex flex-wrap items-center gap-2 mb-1.5">
+                    <span class="font-mono text-[11px] font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-obsidian-800 text-slate-600 dark:text-slate-400">
+                      Assunto ${String(j + 1).padStart(2, '0')}
+                    </span>
+                    ${vCount > 0
+                      ? `<span class="inline-flex items-center gap-1 text-xs font-medium text-sky-600 dark:text-sky-400">
+                          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><rect x="2" y="4" width="20" height="16" rx="3"/></svg>
+                          ${vCount} ${vCount === 1 ? 'aula' : 'aulas'}
+                        </span>`
+                      : `<span class="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                          Sem link · Adicionar aula
+                        </span>`
+                    }
+                    ${isDone ? `<span class="text-[11px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">Estudado</span>` : ''}
+                    ${hasNote ? `<span class="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400">Com anotações</span>` : ''}
+                  </div>
+                  <h3 class="font-semibold text-sm sm:text-base text-slate-800 dark:text-slate-100 group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors leading-relaxed">
+                    ${escapeHtml(t.title)}
+                  </h3>
+                </button>
+
+                <button onclick="selectTopic(${i}, ${j})" class="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-obsidian-800 group-hover:bg-sky-500 text-slate-700 dark:text-slate-200 group-hover:text-white text-xs font-semibold transition shrink-0 self-center">
+                  ${vCount > 0 ? 'Estudar' : 'Gerenciar'}
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                </button>
+              </div>
+            `;
+          }).join('')
+        : `
+          <div class="bg-white dark:bg-obsidian-900 border border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-8 text-center space-y-3">
+            <p class="text-sm font-semibold text-slate-700 dark:text-slate-300">Nenhum tópico cadastrado nesta disciplina ainda.</p>
+            <button onclick="openAddTopicModal(${i})" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-600 text-white text-xs font-bold shadow-md shadow-sky-500/20 transition">
+              + Adicionar Primeiro Tópico
+            </button>
+          </div>
+        `;
+
+      $('content').innerHTML = `
+        <div class="animate-view space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              ${d.topics.length} ${d.topics.length === 1 ? 'tópico listado' : 'tópicos listados'}
+            </span>
+            <button onclick="openAddTopicModal(${i})" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-sky-500 hover:bg-sky-600 text-white text-xs font-bold shadow-md shadow-sky-500/20 transition">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+              + Novo Tópico
+            </button>
+          </div>
+
+          <div class="space-y-3">
+            ${topicsHtml}
+          </div>
+        </div>
+      `;
+
+      renderMenu();
+      closeSidebar();
+      $('main').scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // =========================================================================
+    // ADICIONAR NOVO TÓPICO MANUALMENTE NA DISCIPLINA
+    // =========================================================================
+    let targetDisciplineForNewTopic = 0;
+
+    function openAddTopicModal(discIndex) {
+      targetDisciplineForNewTopic = discIndex;
+      const disciplinas = getActiveDisciplinas();
+      const discName = disciplinas[discIndex]?.name || '';
+      $('addTopicDisciplineLabel').textContent = `Disciplina: ${discName}`;
+      $('newTopicTitleInput').value = '';
+      $('newTopicLinksInput').value = '';
+      const modal = $('addTopicModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      setTimeout(() => $('newTopicTitleInput').focus(), 40);
+    }
+
+    function closeAddTopicModal() {
+      const modal = $('addTopicModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function normalizeVideoUrl(raw) {
+      const trimmed = (raw || '').trim();
+      if (!trimmed) return null;
+      const vid = getVideoId(trimmed);
+      if (!vid) return null;
+      return trimmed.startsWith('http') ? trimmed : `https://www.youtube.com/watch?v=${vid}`;
+    }
+
+    function saveNewManualTopic() {
+      const title = $('newTopicTitleInput').value.trim();
+      if (!title) {
+        showToast('Digite o título do novo tópico.', false);
+        $('newTopicTitleInput').focus();
+        return;
+      }
+
+      const rawLines = $('newTopicLinksInput').value.split('\n').map(l => l.trim()).filter(Boolean);
+      const videos = [];
+      let invalidCount = 0;
+
+      rawLines.forEach(line => {
+        const normalized = normalizeVideoUrl(line);
+        if (normalized) {
+          videos.push(normalized);
+        } else {
+          invalidCount++;
+        }
+      });
+
+      if (invalidCount > 0 && videos.length === 0) {
+        showToast('Nenhum dos links informados é uma URL ou ID válido do YouTube.', false);
+        return;
+      }
+
+      const disciplinas = getActiveDisciplinas();
+      const targetDisc = disciplinas[targetDisciplineForNewTopic];
+      if (!targetDisc) return;
+
+      targetDisc.topics.push({
+        title,
+        videos
+      });
+
+      expandedDisciplines[targetDisciplineForNewTopic] = true;
+      saveAccountState();
+      closeAddTopicModal();
+      selectDiscipline(targetDisciplineForNewTopic);
+
+      if (invalidCount > 0) {
+        showToast(`Tópico criado (${invalidCount} link(s) inválido(s) ignorado(s)).`, false);
+      } else {
+        showToast('Novo tópico adicionado com sucesso!', true);
+      }
+    }
+
+    // =========================================================================
+    // GERENCIAR MÚLTIPLOS LINKS DE AULA EM UM TÓPICO (COM OU SEM LINK)
+    // =========================================================================
+    function addVideoLinkToTopic(i, j, rawInputValue) {
+      const disciplinas = getActiveDisciplinas();
+      const topic = disciplinas[i]?.topics[j];
+      if (!topic) return;
+
+      if (!Array.isArray(topic.videos)) topic.videos = [];
+
+      const normalized = normalizeVideoUrl(rawInputValue);
+      if (!normalized) {
+        showToast('Cole uma URL ou ID válido do YouTube.', false);
+        return;
+      }
+
+      const newVidId = getVideoId(normalized);
+      const alreadyExists = topic.videos.some(v => getVideoId(v) === newVidId);
+      if (alreadyExists) {
+        showToast('Esse vídeo já está adicionado neste tópico.', false);
+        return;
+      }
+
+      topic.videos.push(normalized);
+      const newIndex = topic.videos.length - 1;
+      saveAccountState();
+      selectTopic(i, j, newIndex);
+      showToast(`Aula ${newIndex + 1} adicionada ao tópico!`, true);
+    }
+
+    function removeVideoLinkFromTopic(i, j, vIdx) {
+      const disciplinas = getActiveDisciplinas();
+      const topic = disciplinas[i]?.topics[j];
+      if (!topic || !Array.isArray(topic.videos)) return;
+
+      topic.videos.splice(vIdx, 1);
+      saveAccountState();
+      selectTopic(i, j, 0);
+      showToast('Link da aula removido do tópico.', true);
+    }
+
+    function toggleDoneFromList(e, i, j) {
+      e.stopPropagation();
+      const prog = getActiveProgress();
+      const k = key(i, j);
+      prog.done[k] = !prog.done[k];
+      saveAccountState();
+      selectDiscipline(i);
+      showToast(prog.done[k] ? 'Assunto marcado como estudado!' : 'Marcação removida.', prog.done[k]);
+    }
+
+    // =========================================================================
+    // EXTRAÇÃO DE ID DO YOUTUBE
+    // =========================================================================
+    function getVideoId(url) {
+      if (!url) return '';
+      const trimmed = url.trim();
+      if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) return trimmed;
+      try {
+        const u = new URL(trimmed);
+        if (u.hostname.includes('youtu.be')) return u.pathname.slice(1).split('/')[0];
+        if (u.pathname.includes('/live/')) return u.pathname.split('/live/')[1].split('/')[0];
+        if (u.pathname.includes('/embed/')) return u.pathname.split('/embed/')[1].split('/')[0];
+        if (u.pathname.includes('/shorts/')) return u.pathname.split('/shorts/')[1].split('/')[0];
+        return u.searchParams.get('v') || '';
+      } catch (e) {
+        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+        const match = trimmed.match(regExp);
+        return (match && match[2].length === 11) ? match[2] : '';
+      }
+    }
+
+    // =========================================================================
+    // RENDERIZAÇÃO: TELA DE ESTUDO DO ASSUNTO (PLAYER + MÚLTIPLOS LINKS + ANOTAÇÕES)
+    // =========================================================================
+    function selectTopic(i, j, preferredVideoIndex = 0) {
+      disciplinaAtual = i;
+      topicoAtual = j;
+      expandedDisciplines[i] = true;
+
+      const disciplinas = getActiveDisciplinas();
+      const prog = getActiveProgress();
+
+      prog.lastTopic = { i, j };
+      saveAccountState();
+
+      const d = disciplinas[i];
+      const t = d.topics[j];
+      if (!Array.isArray(t.videos)) t.videos = [];
+
+      const safeVideoIdx = t.videos.length
+        ? Math.min(Math.max(0, preferredVideoIndex), t.videos.length - 1)
+        : 0;
+      videoAtual = safeVideoIdx;
+
+      const meta = getSubjectMeta(i, d.name);
+      const isDone = !!prog.done[key(i, j)];
+      const videos = t.videos;
+      const currentUrl = videos.length ? videos[safeVideoIdx] : '';
+      const currentId = currentUrl ? getVideoId(currentUrl) : '';
+
+      const prevTarget = getAdjacentTopic(i, j, -1);
+      const nextTarget = getAdjacentTopic(i, j, 1);
+
+      $('breadcrumbs').innerHTML = `
+        <button onclick="renderHome()" class="hover:text-sky-500 transition-colors">Início</button>
+        <span>/</span>
+        <button onclick="selectDiscipline(${i})" class="hover:text-sky-500 transition-colors">${escapeHtml(meta.shortName)}</button>
+        <span>/</span>
+        <span class="text-sky-600 dark:text-sky-400">Assunto ${j + 1} de ${d.topics.length}</span>
+      `;
+      $('pageTitle').textContent = t.title;
+      $('pageDesc').textContent = `${d.name} · ${videos.length} ${videos.length === 1 ? 'videoaula vinculada' : 'videoaulas vinculadas'}`;
+
+      const playerSection = currentId
+        ? `
+          <div class="relative aspect-video w-full rounded-2xl overflow-hidden bg-black border border-slate-800 shadow-2xl">
+            <iframe
+              id="player"
+              class="w-full h-full border-0"
+              src="https://www.youtube.com/embed/${encodeURIComponent(currentId)}?rel=0"
+              title="Videoaula"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              referrerpolicy="strict-origin-when-cross-origin"
+              allowfullscreen>
+            </iframe>
+          </div>
+        `
+        : `
+          <div class="rounded-2xl bg-slate-50 dark:bg-obsidian-850/80 border border-dashed border-slate-300 dark:border-slate-700 p-8 text-center space-y-2">
+            <div class="w-11 h-11 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center mx-auto">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+            </div>
+            <h3 class="font-bold text-sm sm:text-base text-slate-800 dark:text-slate-100">Este tópico ainda não tem link de aula</h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">Use o campo logo abaixo para adicionar um ou mais links de videoaula manualmente neste assunto.</p>
+          </div>
+        `;
+
+      const videoPillsHtml = videos.length
+        ? videos.map((url, k) => {
+            const isSelected = k === safeVideoIdx;
+            return `
+              <button
+                id="vlink${k}"
+                onclick="playVideo(${k})"
+                class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold border transition-all ${
+                  isSelected
+                    ? 'bg-sky-500 border-sky-500 text-white shadow-md shadow-sky-500/25'
+                    : 'bg-slate-100 dark:bg-obsidian-850 border-slate-200 dark:border-slate-700/80 text-slate-700 dark:text-slate-200 hover:border-sky-500/60'
+                }">
+                <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"/></svg>
+                ${videos.length > 1 ? `Videoaula ${k + 1}` : 'Videoaula Única'}
+              </button>
+            `;
+          }).join('')
+        : '';
+
+      const linksManagerListHtml = videos.length
+        ? videos.map((url, k) => `
+            <div class="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-slate-50 dark:bg-obsidian-950 border border-slate-200 dark:border-slate-800 text-xs">
+              <button onclick="playVideo(${k})" class="flex items-center gap-2 min-w-0 flex-1 text-left hover:text-sky-500 transition">
+                <span class="font-mono font-bold px-2 py-0.5 rounded bg-sky-500/10 text-sky-600 dark:text-sky-400 shrink-0">#${k + 1}</span>
+                <span class="truncate font-mono text-slate-700 dark:text-slate-300">${escapeHtml(url)}</span>
+              </button>
+              <button onclick="removeVideoLinkFromTopic(${i}, ${j}, ${k})" title="Remover este link" class="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-500/10 transition shrink-0">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+              </button>
+            </div>
+          `).join('')
+        : '';
+
+      const savedNote = prog.notes[key(i, j)] || '';
+
+      $('content').innerHTML = `
+        <div class="animate-view space-y-6">
+          
+          <!-- Video Player Card -->
+          <section class="bg-white dark:bg-obsidian-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-6 shadow-sm">
+            ${playerSection}
+
+            <!-- Lesson Controls & External Link -->
+            ${videos.length ? `
+              <div class="mt-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div class="flex flex-wrap items-center gap-2">
+                  ${videoPillsHtml}
+                </div>
+
+                <div class="flex items-center gap-2 shrink-0">
+                  <button onclick="copyCurrentVideoUrl()" title="Copiar link da aula" class="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-obsidian-850 hover:bg-slate-200 dark:hover:bg-obsidian-700 border border-slate-200 dark:border-slate-700/80 text-slate-700 dark:text-slate-200 text-xs font-semibold transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                    Copiar Link
+                  </button>
+                  <a id="openVideo" href="${escapeHtml(currentUrl)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-red-600/10 hover:bg-red-600 text-red-600 dark:text-red-400 hover:text-white border border-red-500/25 text-xs font-bold transition">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+                    Abrir no YouTube
+                  </a>
+                </div>
+              </div>
+            ` : ''}
+
+            <!-- Manual Add / Manage Multiple Links Box -->
+            <div class="mt-5 pt-5 border-t border-slate-200/80 dark:border-slate-800/80 space-y-3">
+              <div class="flex items-center justify-between gap-2">
+                <label for="topicManualLinkInput" class="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                  ${videos.length ? 'Adicionar mais um link de aula neste tópico' : 'Adicionar link de aula neste tópico'}
+                </label>
+                <span class="font-mono text-[11px] text-slate-400">${videos.length} ${videos.length === 1 ? 'link salvo' : 'links salvos'}</span>
+              </div>
+
+              <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                <input
+                  id="topicManualLinkInput"
+                  type="text"
+                  placeholder="Cole a URL do YouTube (watch, youtu.be, live) ou ID de 11 caracteres..."
+                  onkeydown="if(event.key === 'Enter'){ event.preventDefault(); addVideoLinkToTopic(${i}, ${j}, this.value); }"
+                  class="flex-1 px-3.5 py-2.5 text-xs sm:text-sm rounded-xl bg-slate-50 dark:bg-obsidian-950 border border-slate-200 dark:border-slate-700/80 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition"
+                />
+                <button
+                  type="button"
+                  onclick="addVideoLinkToTopic(${i}, ${j}, $('topicManualLinkInput').value)"
+                  class="px-4 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-600 text-white font-bold text-xs sm:text-sm shadow-md shadow-sky-500/20 inline-flex items-center justify-center gap-1.5 transition shrink-0">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                  Adicionar Aula
+                </button>
+              </div>
+
+              ${linksManagerListHtml ? `
+                <div class="space-y-1.5 pt-1">
+                  ${linksManagerListHtml}
+                </div>
+              ` : ''}
+            </div>
+
+            <!-- Completion Action Banner -->
+            <div class="mt-6 pt-5 border-t border-slate-200 dark:border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <button id="toggleDoneBtn" onclick="toggleDone(${i}, ${j})" class="flex items-center justify-center sm:justify-start gap-3 px-5 py-3 rounded-xl font-bold text-sm transition-all cursor-pointer ${
+                isDone
+                  ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/25 hover:bg-emerald-600'
+                  : 'bg-slate-100 dark:bg-obsidian-800 text-slate-800 dark:text-slate-100 hover:bg-emerald-500/15 hover:text-emerald-600 dark:hover:text-emerald-400 border border-slate-200 dark:border-slate-700'
+              }">
+                <span class="w-5 h-5 rounded-md flex items-center justify-center ${isDone ? 'bg-white/20' : 'border border-current'}">
+                  <svg class="w-3.5 h-3.5 ${isDone ? 'opacity-100' : 'opacity-40'}" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                </span>
+                <span id="toggleDoneLabel">${isDone ? 'Assunto Concluído!' : 'Marcar assunto como estudado'}</span>
+              </button>
+
+              <!-- Sequential Prev / Next Navigation -->
+              <div class="flex items-center justify-between sm:justify-end gap-2">
+                <button ${prevTarget ? `onclick="selectTopic(${prevTarget.i}, ${prevTarget.j})"` : 'disabled'} class="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-obsidian-850 text-slate-700 dark:text-slate-200 hover:border-sky-500 disabled:opacity-40 disabled:pointer-events-none transition">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+                  Anterior
+                </button>
+                <button ${nextTarget ? `onclick="selectTopic(${nextTarget.i}, ${nextTarget.j})"` : 'disabled'} class="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-obsidian-850 text-slate-700 dark:text-slate-200 hover:border-sky-500 disabled:opacity-40 disabled:pointer-events-none transition">
+                  Próximo
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <!-- Personal Notes Card -->
+          <section class="bg-white dark:bg-obsidian-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-6 shadow-sm">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+              <div class="flex items-center gap-2">
+                <span class="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                </span>
+                <div>
+                  <h2 class="font-bold text-base text-slate-900 dark:text-white">Caderno de Anotações</h2>
+                  <p class="text-xs text-slate-500 dark:text-slate-400">Resumos, macetes, artigos de lei e pontos de revisão</p>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-3">
+                <span id="noteCharCount" class="font-mono text-xs text-slate-400">${savedNote.length} caracteres</span>
+                <span class="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                  Salvo localmente
+                </span>
+              </div>
+            </div>
+
+            <textarea
+              id="noteArea"
+              rows="5"
+              placeholder="Escreva aqui seus apontamentos sobre este tópico..."
+              oninput="handleNoteInput(${i}, ${j}, this.value)"
+              class="w-full p-4 rounded-xl bg-slate-50 dark:bg-obsidian-950 border border-slate-200 dark:border-slate-800 text-sm text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition leading-relaxed resize-y"
+            >${escapeHtml(savedNote)}</textarea>
+          </section>
+
+        </div>
+      `;
+
+      renderMenu();
+      closeSidebar();
+      $('main').scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function getAdjacentTopic(i, j, step) {
+      const disciplinas = getActiveDisciplinas();
+      if (step === 1) {
+        if (j + 1 < disciplinas[i].topics.length) return { i, j: j + 1 };
+        if (i + 1 < disciplinas.length) return { i: i + 1, j: 0 };
+        return null;
+      } else {
+        if (j - 1 >= 0) return { i, j: j - 1 };
+        if (i - 1 >= 0) {
+          const prevDisc = disciplinas[i - 1];
+          return { i: i - 1, j: prevDisc.topics.length - 1 };
+        }
+        return null;
+      }
+    }
+
+    function playVideo(k) {
+      const disciplinas = getActiveDisciplinas();
+      const t = disciplinas[disciplinaAtual]?.topics[topicoAtual];
+      if (!t || !Array.isArray(t.videos) || !t.videos[k]) return;
+      const url = t.videos[k];
+      const id = getVideoId(url);
+      if (id && $('player')) {
+        $('player').src = `https://www.youtube.com/embed/${encodeURIComponent(id)}?rel=0`;
+      }
+      if ($('openVideo')) {
+        $('openVideo').href = url;
+      }
+      videoAtual = k;
+
+      t.videos.forEach((_, idx) => {
+        const btn = $(`vlink${idx}`);
+        if (!btn) return;
+        if (idx === k) {
+          btn.className = 'inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold border transition-all bg-sky-500 border-sky-500 text-white shadow-md shadow-sky-500/25';
+        } else {
+          btn.className = 'inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold border transition-all bg-slate-100 dark:bg-obsidian-850 border-slate-200 dark:border-slate-700/80 text-slate-700 dark:text-slate-200 hover:border-sky-500/60';
+        }
+      });
+    }
+
+    function copyCurrentVideoUrl() {
+      const disciplinas = getActiveDisciplinas();
+      const t = disciplinas[disciplinaAtual]?.topics[topicoAtual];
+      if (!t || !t.videos[videoAtual]) return;
+      copyTextToClipboard(t.videos[videoAtual], 'Link da videoaula copiado!');
+    }
+
+    function copyTextToClipboard(text, successMsg) {
+      const tempInput = document.createElement('textarea');
+      tempInput.value = text;
+      tempInput.style.position = 'fixed';
+      tempInput.style.opacity = '0';
+      document.body.appendChild(tempInput);
+      tempInput.select();
+      try {
+        document.execCommand('copy');
+        showToast(successMsg, true);
+      } catch (e) {
+        showToast('Não foi possível copiar o conteúdo.', false);
+      }
+      document.body.removeChild(tempInput);
+    }
+
+    function toggleDone(i, j) {
+      const prog = getActiveProgress();
+      const k = key(i, j);
+      const nextVal = !prog.done[k];
+      prog.done[k] = nextVal;
+      saveAccountState();
+      selectTopic(i, j, videoAtual);
+      showToast(nextVal ? 'Parabéns! Assunto marcado como estudado.' : 'Assunto desmarcado.', nextVal);
+    }
+
+    function handleNoteInput(i, j, val) {
+      const prog = getActiveProgress();
+      prog.notes[key(i, j)] = val;
+      saveAccountState();
+      $('noteCharCount').textContent = `${val.length} caracteres`;
+      renderMenu();
+    }
+
+    // =========================================================================
+    // BACKUP E RESTAURAÇÃO DE CONTA COMPLETA (JSON)
+    // =========================================================================
+    function exportBackup() {
+      const dataStr = JSON.stringify(account, null, 2);
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `estudo_em_foco_conta_${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('Backup completo da conta exportado!', true);
+    }
+
+    function importBackup(event) {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          if (parsed && Array.isArray(parsed.courses)) {
+            account = {
+              activeCourseId: parsed.activeCourseId || parsed.courses[0]?.id || DEFAULT_COURSE_ID,
+              courses: parsed.courses.length ? parsed.courses : [createDefaultUfalCourse()],
+              progress: parsed.progress || {}
+            };
+          } else if (parsed && (parsed.done || parsed.notes)) {
+            account.progress[DEFAULT_COURSE_ID] = {
+              done: parsed.done || {},
+              notes: parsed.notes || {},
+              lastTopic: parsed.lastTopic || null
+            };
+            account.activeCourseId = DEFAULT_COURSE_ID;
+          } else {
+            showToast('Arquivo de backup inválido.', false);
+            event.target.value = '';
+            return;
+          }
+
+          saveAccountState();
+          renderCourseSelector();
+          updateProgress();
+          renderHome();
+          showToast('Concursos, progresso e anotações restaurados!', true);
+        } catch (err) {
+          showToast('Erro ao ler o arquivo JSON.', false);
+        }
+        event.target.value = '';
+      };
+      reader.readAsText(file);
+    }
+
+    // =========================================================================
+    // GERADOR DE EDITAL & BUSCADOR DE AULAS (YOUTUBE DATA API V3 + MÚLTIPLOS LINKS)
+    // =========================================================================
+    let topicosGerador = [];
+    let filtroGeradorAtual = 'todas';
+    let idsUtilizados = new Set();
+
+    const DEFAULT_YOUTUBE_API_KEY = 'AIzaSyCemWxTu6yBSzGH27V-3vEMj5B06zFGp4w';
+
+function getYouTubeApiKey() {
+  const inputKey = $('api-key') ? $('api-key').value.trim() : '';
+  const storedKey = (localStorage.getItem(apiKeyStorageKey) || '').trim();
+  return inputKey || storedKey || DEFAULT_YOUTUBE_API_KEY.trim();
+}
+
+    function openGeneratorModal(prefillCurrentCourse = false) {
+      closeSidebar();
+      const savedApiKey = localStorage.getItem(apiKeyStorageKey) || '';
+      $('api-key').value = savedApiKey;
+
+      if (prefillCurrentCourse) {
+        const active = getActiveCourse();
+        $('edital-nome').value = active.name;
+        $('subcategoria-nome').value = active.subcategoria || '';
+      }
+
+      $('generatorModal').classList.remove('hidden');
+    }
+
+    function closeGeneratorModal() {
+      $('generatorModal').classList.add('hidden');
+    }
+
+    function saveApiKey(val) {
+      try {
+        localStorage.setItem(apiKeyStorageKey, val.trim());
+      } catch (e) {}
+    }
+
+    function toggleApiKeyVisibility() {
+      const input = $('api-key');
+      const btn = $('toggleApiBtn');
+      if (input.type === 'password') {
+        input.type = 'text';
+        btn.textContent = 'Ocultar';
+      } else {
+        input.type = 'password';
+        btn.textContent = 'Mostrar';
+      }
+    }
+
+    function slugify(text) {
+      return text.toString().toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/[^\w\-]+/g, '')
+        .replace(/\-\-+/g, '-')
+        .replace(/^-+|-+$/g, '');
+    }
+
+    function gerarListaTopicos() {
+      const rawText = $('topicos-raw').value;
+
+      if (!rawText.trim()) {
+        showToast('Cole o conteúdo programático para gerar a lista de tópicos.', false);
+        $('topicos-raw').focus();
+        return;
+      }
+
+      idsUtilizados.clear();
+
+      const textoLimpo = rawText.replace(/\s+/g, ' ').trim();
+      let textoFormatado = textoLimpo;
+
+      if (/(?<=^|\s)\d+(\.\d+)*\.\s*/.test(textoLimpo)) {
+        textoFormatado = textoLimpo.replace(/(?<=^|\s)(\d+(\.\d+)*\.\s*)/g, '\n$1');
+      } else {
+        textoFormatado = textoLimpo.replace(/\.\s+(?=[A-ZÁÉÍÓÚÀÂÊÔÃÕÇ])/g, '.\n');
+      }
+
+      $('topicos-raw').value = textoFormatado.trim();
+
+      const linhas = textoFormatado
+        .split('\n')
+        .map(l => l.trim())
+        .filter(l => l.length > 0);
+
+      topicosGerador = linhas.map((linha, i) => ({
+        id: `topico-${i + 1}`,
+        titulo: linha,
+        videos: []
+      }));
+
+      $('section-progresso').classList.remove('hidden');
+      $('section-exportar').classList.remove('hidden');
+
+      renderizarTopicosGerador();
+      atualizarProgressoGerador();
+      showToast(`${topicosGerador.length} tópicos extraídos com sucesso!`, true);
+    }
+
+    async function buscarVideoAPI(index, silent = false) {
+      const apiKey = $('api-key').value.trim();
+      if (!apiKey) {
+        showToast('Insira sua Chave da API do YouTube (Data API v3) no topo do gerador.', false);
+        $('api-key').focus();
+        return false;
+      }
+
+      const topico = topicosGerador[index].titulo;
+      const concurso = $('edital-nome').value.trim();
+      const disciplina = $('disciplina-nome').value.trim();
+
+      const queryGeral = `aula ${concurso} ${disciplina} ${topico}`.trim();
+      const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(queryGeral)}&type=video&order=relevance&maxResults=5&key=${encodeURIComponent(apiKey)}`;
+
+      try {
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.error) {
+          showToast(`Erro na API do YouTube: ${data.error.message}`, false);
+          return false;
+        }
+
+        if (data.items && data.items.length > 0) {
+          const videoValido = data.items.find(item => !idsUtilizados.has(item.id.videoId));
+
+          if (videoValido) {
+            const videoId = videoValido.id.videoId;
+            const watchUrl = `https://www.youtube.com/watch?v=${videoId}`;
+
+            idsUtilizados.add(videoId);
+            if (!topicosGerador[index].videos.includes(watchUrl)) {
+              topicosGerador[index].videos.push(watchUrl);
+            }
+
+            renderizarTopicosGerador();
+            atualizarProgressoGerador();
+            if (!silent) showToast(`Aula encontrada para o tópico ${index + 1}!`, true);
+            return true;
+          } else {
+            if (!silent) showToast(`Os vídeos retornados para este tópico já foram usados em outros itens.`, false);
+            return false;
+          }
+        } else {
+          if (!silent) showToast(`Nenhum vídeo encontrado para o tópico ${index + 1}.`, false);
+          return false;
+        }
+      } catch (err) {
+        console.error('Erro na requisição YouTube API:', err);
+        if (!silent) showToast('Erro de conexão ao consultar a API do YouTube.', false);
+        return false;
+      }
+    }
+
+    async function buscarTodosAutomatico() {
+      const apiKey = $('api-key').value.trim();
+      if (!apiKey) {
+        showToast('Insira sua Chave da API do YouTube antes de iniciar a busca em lote.', false);
+        $('api-key').focus();
+        return;
+      }
+
+      const pendentes = topicosGerador
+        .map((t, idx) => ({ ...t, index: idx }))
+        .filter(t => !t.videos || t.videos.length === 0);
+
+      if (pendentes.length === 0) {
+        showToast('Todos os tópicos já possuem ao menos uma videoaula cadastrada!', true);
+        return;
+      }
+
+      const btn = $('btn-auto-lote');
+      btn.disabled = true;
+      btn.classList.add('opacity-70', 'pointer-events-none');
+
+      let encontrados = 0;
+      for (let step = 0; step < pendentes.length; step++) {
+        const item = pendentes[step];
+        btn.textContent = `⏳ Buscando (${step + 1}/${pendentes.length})...`;
+        const ok = await buscarVideoAPI(item.index, true);
+        if (ok) encontrados++;
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
+
+      btn.disabled = false;
+      btn.classList.remove('opacity-70', 'pointer-events-none');
+      btn.textContent = '⚡ Auto-Preencher Lote (API)';
+      showToast(`Busca em lote concluída: ${encontrados} de ${pendentes.length} aulas encontradas!`, true);
+    }
+
+    function adicionarLinkManualGerador(index, inputEl) {
+      const raw = inputEl.value.trim();
+      if (!raw) return;
+
+      const normalized = normalizeVideoUrl(raw);
+      if (!normalized) {
+        showToast('URL ou ID do YouTube inválido.', false);
+        return;
+      }
+
+      const vidId = getVideoId(normalized);
+      if (!Array.isArray(topicosGerador[index].videos)) topicosGerador[index].videos = [];
+
+      if (topicosGerador[index].videos.some(v => getVideoId(v) === vidId)) {
+        showToast('Este link já foi adicionado neste tópico.', false);
+        return;
+      }
+
+      idsUtilizados.add(vidId);
+      topicosGerador[index].videos.push(normalized);
+      inputEl.value = '';
+      renderizarTopicosGerador();
+      atualizarProgressoGerador();
+      showToast(`Link adicionado ao tópico ${index + 1}!`, true);
+    }
+
+    function removerLinkManualGerador(topicIdx, videoIdx) {
+      const item = topicosGerador[topicIdx];
+      if (!item || !Array.isArray(item.videos)) return;
+      const removedUrl = item.videos[videoIdx];
+      const removedId = getVideoId(removedUrl);
+      item.videos.splice(videoIdx, 1);
+
+      const stillUsedElsewhere = topicosGerador.some(t => (t.videos || []).some(v => getVideoId(v) === removedId));
+      if (!stillUsedElsewhere && removedId) {
+        idsUtilizados.delete(removedId);
+      }
+
+      renderizarTopicosGerador();
+      atualizarProgressoGerador();
+      showToast('Link removido do tópico.', true);
+    }
+
+    function renderizarTopicosGerador() {
+      const container = $('topics-list');
+      container.innerHTML = '';
+
+      let visiveis = 0;
+      topicosGerador.forEach((item, index) => {
+        const videos = item.videos || [];
+        const concluido = videos.length > 0;
+
+        if (filtroGeradorAtual === 'pendentes' && concluido) return;
+        if (filtroGeradorAtual === 'concluidas' && !concluido) return;
+        visiveis++;
+
+        const card = document.createElement('div');
+        card.className = `rounded-xl p-4 border transition-all bg-slate-50/70 dark:bg-obsidian-850/60 ${
+          concluido
+            ? 'border-emerald-500/40 border-l-4 border-l-emerald-500'
+            : 'border-slate-200 dark:border-slate-800 border-l-4 border-l-amber-500'
+        }`;
+
+        const linksChipsHtml = videos.map((vUrl, vIdx) => {
+          const vid = getVideoId(vUrl);
+          return `
+            <div class="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-white dark:bg-obsidian-950 border border-slate-200 dark:border-slate-800 text-xs">
+              <a href="https://www.youtube.com/watch?v=${encodeURIComponent(vid)}" target="_blank" rel="noopener noreferrer" class="truncate font-mono text-sky-600 dark:text-sky-400 hover:underline">
+                #${vIdx + 1} · ${escapeHtml(vUrl)}
+              </a>
+              <button type="button" onclick="removerLinkManualGerador(${index}, ${vIdx})" title="Remover link" class="text-slate-400 hover:text-red-500 transition shrink-0">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+            </div>
+          `;
+        }).join('');
+
+        card.innerHTML = `
+          <div class="flex items-start justify-between gap-3 mb-3">
+            <span class="font-semibold text-sm text-slate-800 dark:text-slate-100 leading-snug">
+              ${escapeHtml(item.titulo)}
+            </span>
+            <span class="shrink-0 text-[11px] font-bold uppercase px-2.5 py-0.5 rounded-full ${
+              concluido
+                ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                : 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
+            }">
+              ${concluido ? `✓ ${videos.length} ${videos.length === 1 ? 'aula' : 'aulas'}` : 'Pendente'}
+            </span>
+          </div>
+
+          <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            <button type="button" onclick="buscarVideoAPI(${index})" class="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs inline-flex items-center justify-center gap-1.5 transition shrink-0">
+              ⚡ Buscar API
+            </button>
+            <input
+              type="text"
+              placeholder="Cole uma URL/ID e clique em + Link ou pressione Enter..."
+              onkeydown="if(event.key === 'Enter'){ event.preventDefault(); adicionarLinkManualGerador(${index}, this); }"
+              class="flex-1 px-3 py-2 text-xs sm:text-sm rounded-xl bg-white dark:bg-obsidian-950 border border-slate-200 dark:border-slate-700/80 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-sky-500 transition"
+            />
+            <button
+              type="button"
+              onclick="adicionarLinkManualGerador(${index}, this.previousElementSibling)"
+              class="px-3.5 py-2 rounded-xl bg-sky-500 hover:bg-sky-600 text-white font-bold text-xs inline-flex items-center justify-center gap-1 transition shrink-0">
+              + Link
+            </button>
+          </div>
+
+          ${videos.length ? `
+            <div class="mt-2.5 space-y-1.5">
+              ${linksChipsHtml}
+            </div>
+          ` : ''}
+        `;
+
+        container.appendChild(card);
+      });
+
+      if (!visiveis && topicosGerador.length > 0) {
+        container.innerHTML = `<div class="text-center py-8 text-xs text-slate-500 dark:text-slate-400">Nenhum tópico neste filtro.</div>`;
+      }
+    }
+
+    function atualizarProgressoGerador() {
+      const total = topicosGerador.length;
+      const concluidas = topicosGerador.filter(t => t.videos && t.videos.length > 0).length;
+      const percentual = total > 0 ? Math.round((concluidas / total) * 100) : 0;
+
+      $('gen-progress-bar').style.width = `${percentual}%`;
+      $('gen-progress-text').textContent = `${concluidas} / ${total} tópicos com aula`;
+      $('gen-progress-percent').textContent = `${percentual}%`;
+    }
+
+    function filtrarGerador(tipo, btn) {
+      filtroGeradorAtual = tipo;
+      document.querySelectorAll('.gen-filter-btn').forEach(b => {
+        b.className = 'gen-filter-btn px-3.5 py-1.5 rounded-full text-xs font-semibold bg-white dark:bg-obsidian-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-sky-500 transition';
+      });
+      btn.className = 'gen-filter-btn px-3.5 py-1.5 rounded-full text-xs font-bold bg-sky-500 text-white border border-sky-500 transition';
+      renderizarTopicosGerador();
+    }
+
+    function exportarListaTexto() {
+      const categoriaSelect = $('categoria-id');
+      const categoriaNome = categoriaSelect.options[categoriaSelect.selectedIndex].text;
+      const subcategoriaNome = $('subcategoria-nome').value.trim() || 'Geral';
+      const editalNome = $('edital-nome').value.trim() || 'Concurso Genérico';
+      const disciplinaNome = $('disciplina-nome').value.trim() || 'Geral';
+
+      let textoResultado = `====================================\n`;
+      textoResultado += `Modalidade: ${categoriaNome}\n`;
+      textoResultado += `Subcategoria: ${subcategoriaNome}\n`;
+      textoResultado += `Concurso/Edital: ${editalNome}\n`;
+      textoResultado += `Disciplina: ${disciplinaNome}\n`;
+      textoResultado += `====================================\n\n`;
+      textoResultado += `TÓPICOS E LINKS DAS AULAS:\n`;
+
+      topicosGerador.forEach((t) => {
+        textoResultado += `\n${t.titulo}\n`;
+        if (t.videos && t.videos.length > 0) {
+          t.videos.forEach((vUrl, idx) => {
+            const vid = getVideoId(vUrl);
+            textoResultado += `   Link ${idx + 1}: https://www.youtube.com/watch?v=${vid}\n`;
+          });
+        } else {
+          textoResultado += `   Link: Sem link cadastrado\n`;
+        }
+      });
+
+      $('json-output').textContent = textoResultado;
+      const modal = $('modal-export');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function copiarExportacao() {
+      const texto = $('json-output').textContent;
+      copyTextToClipboard(texto, 'Lista formatada copiada para a área de transferência!');
+    }
+
+    function fecharModalExport() {
+      const modal = $('modal-export');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    // =========================================================================
+    // INTEGRAÇÃO DIRETA: SALVAR EDITAL / DISCIPLINA NA CONTA DO USUÁRIO
+    // =========================================================================
+    function salvarNaMinhaConta() {
+      if (!topicosGerador.length) {
+        showToast('Gere a lista de tópicos antes de salvar.', false);
+        return;
+      }
+
+      const categoriaSelect = $('categoria-id');
+      const modalidade = categoriaSelect.options[categoriaSelect.selectedIndex].text;
+      const subcategoria = $('subcategoria-nome').value.trim() || 'Geral';
+      const editalNome = $('edital-nome').value.trim();
+      const disciplinaNome = $('disciplina-nome').value.trim();
+
+      if (!editalNome) {
+        showToast('Informe o Nome do Concurso / Edital para salvar na sua conta.', false);
+        $('edital-nome').focus();
+        return;
+      }
+
+      if (!disciplinaNome) {
+        showToast('Informe o nome da Disciplina.', false);
+        $('disciplina-nome').focus();
+        return;
+      }
+
+      const novosTopicos = topicosGerador.map(t => ({
+        title: t.titulo,
+        videos: Array.isArray(t.videos)
+          ? t.videos.map(v => `https://www.youtube.com/watch?v=${getVideoId(v)}`)
+          : []
+      }));
+
+      let targetCourse = account.courses.find(
+        c => c.name.trim().toLocaleLowerCase('pt-BR') === editalNome.toLocaleLowerCase('pt-BR')
+      );
+
+      if (!targetCourse) {
+        const newId = `course-${slugify(editalNome)}-${Date.now().toString(36)}`;
+        targetCourse = {
+          id: newId,
+          name: editalNome,
+          modalidade,
+          subcategoria,
+          isDefault: false,
+          disciplinas: []
+        };
+        account.courses.push(targetCourse);
+        account.progress[newId] = { done: {}, notes: {}, lastTopic: null };
+      }
+
+      const existingDiscIndex = targetCourse.disciplinas.findIndex(
+        d => d.name.trim().toLocaleLowerCase('pt-BR') === disciplinaNome.toLocaleLowerCase('pt-BR')
+      );
+
+      let targetDiscIndex = 0;
+      if (existingDiscIndex >= 0) {
+        targetCourse.disciplinas[existingDiscIndex].topics = novosTopicos;
+        targetDiscIndex = existingDiscIndex;
+      } else {
+        targetCourse.disciplinas.push({
+          name: disciplinaNome,
+          topics: novosTopicos
+        });
+        targetDiscIndex = targetCourse.disciplinas.length - 1;
+      }
+
+      account.activeCourseId = targetCourse.id;
+      expandedDisciplines = { [targetDiscIndex]: true };
+      saveAccountState();
+      renderCourseSelector();
+      updateProgress();
+      closeGeneratorModal();
+
+      $('disciplina-nome').value = '';
+      $('topicos-raw').value = '';
+      $('topics-list').innerHTML = '';
+      $('section-progresso').classList.add('hidden');
+      $('section-exportar').classList.add('hidden');
+      topicosGerador = [];
+      idsUtilizados.clear();
+
+      selectDiscipline(targetDiscIndex);
+      showToast(`"${disciplinaNome}" salva em "${targetCourse.name}"!`, true);
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    // =========================================================================
+    // INICIALIZAÇÃO
+    // =========================================================================
+    initTheme();
+    renderCourseSelector();
+    updateProgress();
+    renderHome();
+  </script>
+</body>
+</html>
