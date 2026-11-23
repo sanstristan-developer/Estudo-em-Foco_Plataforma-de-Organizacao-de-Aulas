@@ -1708,8 +1708,8 @@ function getYouTubeApiKey() {
 
     function openGeneratorModal(prefillCurrentCourse = false) {
       closeSidebar();
-      const savedApiKey = localStorage.getItem(apiKeyStorageKey) || '';
-      $('api-key').value = savedApiKey;
+      const savedApiKey = localStorage.getItem(apiKeyStorageKey) || DEFAULT_YOUTUBE_API_KEY;
+$('api-key').value = savedApiKey;
 
       if (prefillCurrentCourse) {
         const active = getActiveCourse();
@@ -1793,7 +1793,7 @@ function getYouTubeApiKey() {
     }
 
     async function buscarVideoAPI(index, silent = false) {
-      const apiKey = $('api-key').value.trim();
+      const apiKey = getYouTubeApiKey();
       if (!apiKey) {
         showToast('Insira sua Chave da API do YouTube (Data API v3) no topo do gerador.', false);
         $('api-key').focus();
@@ -1848,7 +1848,7 @@ function getYouTubeApiKey() {
     }
 
     async function buscarTodosAutomatico() {
-      const apiKey = $('api-key').value.trim();
+      const apiKey = getYouTubeApiKey();
       if (!apiKey) {
         showToast('Insira sua Chave da API do YouTube antes de iniciar a busca em lote.', false);
         $('api-key').focus();
