@@ -82,6 +82,62 @@
 </head>
 <body class="bg-slate-50 text-slate-900 dark:bg-obsidian-950 dark:text-slate-100 antialiased selection:bg-sky-500/30 selection:text-sky-200 overflow-hidden h-screen flex flex-col lg:flex-row">
 
+
+  <!-- Acesso obrigatório com Google -->
+  <div id="authGate" class="fixed inset-0 z-[300] flex items-center justify-center bg-slate-950/95 backdrop-blur-md p-5">
+    <div class="w-full max-w-md rounded-3xl bg-white dark:bg-obsidian-900 border border-slate-200 dark:border-slate-700 shadow-2xl p-8 text-center">
+      <div class="mx-auto mb-5 w-16 h-16 rounded-2xl bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-sky-500/25">
+        <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+      </div>
+      <h1 class="text-2xl font-extrabold text-slate-900 dark:text-white">Estudo em Foco</h1>
+      <p class="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">Vincule sua conta Google para acessar seus editais, organizar seus estudos e compartilhar conteúdos com a comunidade.</p>
+      <button id="gateGoogleBtn" onclick="window.estudoFocoAuth?.signIn()" class="mt-7 w-full flex items-center justify-center gap-3 rounded-xl bg-sky-600 hover:bg-sky-700 px-5 py-3.5 text-sm font-bold text-white transition shadow-lg shadow-sky-600/20">
+        <svg class="w-5 h-5" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 24.5c0-1.6-.1-2.8-.4-4.1H24v7.8h11.2c-.2 2-1.5 5-4.3 7l6.6 5.1c3.9-3.6 6.1-8.9 6.1-15.8z"/><path fill="#4285F4" d="M24 44c5.5 0 10.1-1.8 13.5-4.9l-6.6-5.1c-1.8 1.2-4.1 2-6.9 2-5.3 0-9.8-3.6-11.4-8.5l-6.8 5.2C9.2 39.4 16 44 24 44z"/><path fill="#34A853" d="M12.6 27.5a12 12 0 0 1 0-7l-6.8-5.2a20 20 0 0 0 0 17.4z"/><path fill="#EA4335" d="M24 12.1c3 0 5.6 1 7.7 3l5.8-5.8C34 5.9 29.5 4 24 4 16 4 9.2 8.6 5.8 15.3l6.8 5.2c1.6-4.8 6.1-8.4 11.4-8.4z"/></svg>
+        Vincular conta Google
+      </button>
+      <p id="gateMessage" class="mt-4 min-h-5 text-xs text-slate-500 dark:text-slate-400">O acesso à plataforma exige uma conta Google.</p>
+    </div>
+  </div>
+
+  <!-- Perfil e preferências -->
+  <div id="profileModal" class="fixed inset-0 z-[220] hidden items-center justify-center bg-slate-950/75 backdrop-blur-sm p-4">
+    <div class="w-full max-w-md rounded-2xl bg-white dark:bg-obsidian-900 border border-slate-200 dark:border-slate-700 shadow-2xl p-6 space-y-5">
+      <div class="flex items-center justify-between">
+        <div><h2 class="text-lg font-extrabold text-slate-900 dark:text-white">Meu perfil</h2><p class="text-xs text-slate-500 dark:text-slate-400">Personalize sua conta.</p></div>
+        <button onclick="window.estudoFocoProfile?.close()" class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-obsidian-800" aria-label="Fechar">✕</button>
+      </div>
+      <div class="flex items-center gap-4">
+        <img id="profilePreview" alt="Foto de perfil" class="w-16 h-16 rounded-full object-cover bg-slate-100 dark:bg-obsidian-800 border border-slate-200 dark:border-slate-700" src="">
+        <div class="min-w-0 flex-1">
+          <label for="profilePhotoFile" class="inline-flex cursor-pointer rounded-lg bg-slate-100 dark:bg-obsidian-800 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-obsidian-700">Alterar foto</label>
+          <input id="profilePhotoFile" type="file" accept="image/png,image/jpeg,image/webp" class="hidden" onchange="window.estudoFocoProfile?.previewPhoto(this.files?.[0])">
+          <p class="mt-1 text-[11px] text-slate-500">PNG, JPG ou WebP. Até 2 MB. Salva somente neste dispositivo.</p>
+        </div>
+      </div>
+      <div><label for="profileNameInput" class="mb-1.5 block text-xs font-bold text-slate-600 dark:text-slate-300">Nome exibido</label><input id="profileNameInput" maxlength="50" class="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-obsidian-950 px-3.5 py-2.5 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"></div>
+      <div class="flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-700 p-3">
+        <div><div class="text-sm font-semibold text-slate-800 dark:text-slate-100">Aparência</div><div class="text-xs text-slate-500 dark:text-slate-400">Alternar modo claro e escuro</div></div>
+        <button id="profileThemeToggle" onclick="toggleTheme(); window.estudoFocoProfile?.syncThemeLabel()" class="rounded-lg bg-slate-100 dark:bg-obsidian-800 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200">Modo escuro</button>
+      </div>
+      <div class="flex items-center justify-between gap-2 pt-1">
+        <button onclick="window.estudoFocoAuth?.signOut()" class="rounded-xl border border-red-200 dark:border-red-900/60 px-4 py-2.5 text-xs font-bold text-red-600 dark:text-red-400">Sair da conta</button>
+        <div class="flex gap-2"><button onclick="window.estudoFocoProfile?.close()" class="rounded-xl bg-slate-100 dark:bg-obsidian-800 px-4 py-2.5 text-xs font-bold">Cancelar</button><button onclick="window.estudoFocoProfile?.save()" class="rounded-xl bg-sky-600 hover:bg-sky-700 px-4 py-2.5 text-xs font-bold text-white">Salvar perfil</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Busca de editais públicos -->
+  <div id="publicSearchModal" class="fixed inset-0 z-[210] hidden items-center justify-center bg-slate-950/75 backdrop-blur-sm p-3 sm:p-5">
+    <div class="w-full max-w-3xl max-h-[88vh] overflow-hidden rounded-2xl bg-white dark:bg-obsidian-900 border border-slate-200 dark:border-slate-700 shadow-2xl flex flex-col">
+      <div class="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3">
+        <div><h2 class="text-lg font-extrabold text-slate-900 dark:text-white">Encontrar editais públicos</h2><p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Pesquise e adicione uma organização à sua conta.</p></div>
+        <button onclick="window.estudoFocoPublicSearch?.close()" class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-obsidian-800">✕</button>
+      </div>
+      <div class="p-4 border-b border-slate-200 dark:border-slate-800"><input id="publicSearchInput" oninput="window.estudoFocoPublicSearch?.filter(this.value)" placeholder="Buscar por concurso, edital ou autor..." class="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-obsidian-950 px-4 py-3 text-sm focus:outline-none focus:border-sky-500"></div>
+      <div id="publicSearchResults" class="flex-1 overflow-y-auto p-4 space-y-3"><p class="text-sm text-slate-500">Carregando editais públicos...</p></div>
+    </div>
+  </div>
+
   <!-- Toast Notification (replaces alert) -->
   <div id="toast" class="fixed bottom-5 right-5 z-[120] pointer-events-none opacity-0 translate-y-3 transition-all duration-300 flex items-center gap-2.5 px-4 py-3 rounded-xl bg-slate-900 dark:bg-obsidian-800 text-white border border-slate-700/80 shadow-2xl text-sm font-medium max-w-md">
     <span id="toastIcon" class="text-emerald-400 shrink-0"></span>
@@ -193,6 +249,9 @@
           <div class="text-xs font-medium text-slate-500 dark:text-slate-400 truncate">Plataforma de Organização de Aulas</div>
         </div>
       </button>
+      <button id="profileAvatarButton" onclick="window.estudoFocoProfile?.open()" title="Configurar perfil" class="hidden shrink-0 w-10 h-10 rounded-full overflow-hidden border-2 border-sky-500/40 hover:border-sky-500 transition shadow-sm">
+        <img id="profileAvatarImage" alt="Perfil" class="w-full h-full object-cover" src="">
+      </button>
 
       <!-- Theme Toggle (Desktop) & Close (Mobile) -->
       <div class="flex items-center gap-1">
@@ -230,11 +289,21 @@
       </button>
     </div>
 
+
+    <!-- Busca separada: editais públicos -->
+    <div class="p-3 border-b border-slate-200 dark:border-slate-800/80 bg-white dark:bg-obsidian-900">
+      <label for="openPublicSearch" class="block mb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Encontrar outro edital público</label>
+      <div class="relative">
+        <svg class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" d="m21 21-4.35-4.35"/></svg>
+        <input id="publicSearchQuick" type="search" onfocus="window.estudoFocoPublicSearch?.open(this.value)" placeholder="Buscar outro edital público..." class="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-obsidian-950 pl-9 pr-3 py-2.5 text-xs text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-sky-500 transition">
+      </div>
+    </div>
+
     <!-- Search Input -->
     <div class="p-3 border-b border-slate-200 dark:border-slate-800/80 bg-slate-50/30 dark:bg-obsidian-950/30">
       <div class="relative">
         <svg class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" d="m21 21-4.35-4.35"/></svg>
-        <input id="search" type="text" placeholder="Filtrar disciplina ou assunto..." oninput="handleSearchInput()" class="w-full pl-9 pr-8 py-2 text-xs sm:text-sm rounded-xl bg-white dark:bg-obsidian-850 border border-slate-200 dark:border-slate-700/80 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition" />
+        <input id="search" type="text" placeholder="Buscar conteúdo neste edital..." oninput="handleSearchInput()" class="w-full pl-9 pr-8 py-2 text-xs sm:text-sm rounded-xl bg-white dark:bg-obsidian-850 border border-slate-200 dark:border-slate-700/80 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition" />
         <button id="clearSearchBtn" onclick="clearSearch()" title="Limpar busca" class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-white">
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" d="M18 6 6 18M6 6l12 12"/></svg>
         </button>
@@ -699,7 +768,31 @@
         console.warn('Erro ao salvar estado:', e);
       }
       updateProgress();
+      if (window.estudoFocoAuth?.scheduleSave) window.estudoFocoAuth.scheduleSave();
     }
+
+    // Ponte entre o aplicativo existente e os serviços Firebase.
+    window.estudoFocoApp = {
+      getAccount: () => account,
+      replaceAccount: (next) => {
+        if (!next || !Array.isArray(next.courses) || !next.courses.length) return;
+        account = {
+          activeCourseId: next.activeCourseId || next.courses[0].id,
+          courses: next.courses,
+          progress: next.progress || {}
+        };
+        account.courses.forEach(c => {
+          if (!Array.isArray(c.disciplinas)) c.disciplinas = [];
+          if (!account.progress[c.id]) account.progress[c.id] = { done: {}, notes: {}, lastTopic: null };
+          c.disciplinas.forEach(d => (d.topics || []).forEach(t => { if (!Array.isArray(t.videos)) t.videos = []; }));
+        });
+        if (!account.courses.some(c => c.id === account.activeCourseId)) account.activeCourseId = account.courses[0].id;
+        localStorage.setItem(accountStorageKey, JSON.stringify(account));
+        renderCourseSelector(); updateProgress(); renderHome();
+      },
+      toast: (message, ok = true) => showToast(message, ok),
+      refresh: () => { renderCourseSelector(); updateProgress(); renderHome(); }
+    };
 
     function showToast(message, isSuccess = true) {
       const toast = $('toast');
@@ -2174,5 +2267,366 @@ $('api-key').value = savedApiKey;
     updateProgress();
     renderHome();
   </script>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+  import { getFirestore, doc, getDoc, setDoc, collection, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCFEDCWtZKJ0J1GK5r2T_Nndz4Fe4S-Zg",
+    authDomain: "estudo-em-foco-bdfd1.firebaseapp.com",
+    projectId: "estudo-em-foco-bdfd1",
+    storageBucket: "estudo-em-foco-bdfd1.firebasestorage.app",
+    messagingSenderId: "779086677362",
+    appId: "1:779086677362:web:d3f358399f3ba1cfe509eb"
+  };
+
+  const firebaseApp = initializeApp(firebaseConfig);
+  const auth = getAuth(firebaseApp);
+  const db = getFirestore(firebaseApp);
+  const googleProvider = new GoogleAuthProvider();
+  googleProvider.setCustomParameters({ prompt: "select_account" });
+
+  let user = null;
+  let profile = { displayName: "", photoURL: "" };
+  let pendingPhoto = null;
+  let localPhotoURL = null;
+  const PHOTO_DB_NAME = "estudo-em-foco-local";
+  const PHOTO_STORE_NAME = "profile-photos";
+
+  function openPhotoDB() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(PHOTO_DB_NAME, 1);
+      request.onupgradeneeded = () => {
+        const database = request.result;
+        if (!database.objectStoreNames.contains(PHOTO_STORE_NAME)) database.createObjectStore(PHOTO_STORE_NAME);
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async function saveLocalPhoto(uid, blob) {
+    const database = await openPhotoDB();
+    await new Promise((resolve, reject) => {
+      const transaction = database.transaction(PHOTO_STORE_NAME, "readwrite");
+      transaction.objectStore(PHOTO_STORE_NAME).put(blob, uid);
+      transaction.oncomplete = resolve;
+      transaction.onerror = () => reject(transaction.error);
+      transaction.onabort = () => reject(transaction.error);
+    });
+    database.close();
+  }
+
+  async function getLocalPhoto(uid) {
+    const database = await openPhotoDB();
+    const result = await new Promise((resolve, reject) => {
+      const request = database.transaction(PHOTO_STORE_NAME, "readonly").objectStore(PHOTO_STORE_NAME).get(uid);
+      request.onsuccess = () => resolve(request.result || null);
+      request.onerror = () => reject(request.error);
+    });
+    database.close();
+    return result;
+  }
+
+  async function loadLocalPhoto(uid) {
+    if (localPhotoURL) URL.revokeObjectURL(localPhotoURL);
+    localPhotoURL = null;
+    const blob = await getLocalPhoto(uid);
+    if (blob) localPhotoURL = URL.createObjectURL(blob);
+  }
+  let saveTimer = null;
+  let publicEditals = [];
+  let authReady = false;
+
+  const el = id => document.getElementById(id);
+  const appBridge = () => window.estudoFocoApp;
+  const showToast = (msg, ok=true) => appBridge()?.toast(msg, ok);
+  const hideGate = () => el("authGate")?.classList.add("hidden");
+
+  function setGateMessage(message) {
+    const target = el("gateMessage");
+    if (target) target.textContent = message;
+  }
+
+  async function signIn() {
+    try {
+      setGateMessage("Abrindo o acesso seguro do Google...");
+      await signInWithPopup(auth, googleProvider);
+    } catch (error) {
+      console.error("Falha no login Google:", error);
+      setGateMessage(error.code === "auth/unauthorized-domain"
+        ? "Este domínio não está autorizado. Cadastre-o em Authentication → Configurações → Domínios autorizados."
+        : "Não foi possível vincular a conta: " + (error.message || error.code));
+    }
+  }
+
+  async function doSignOut() {
+    try { await signOut(auth); }
+    catch (error) { showToast("Não foi possível sair da conta: " + error.message, false); }
+  }
+
+  function paintAvatar() {
+    const button = el("profileAvatarButton");
+    const img = el("profileAvatarImage");
+    if (!button || !img) return;
+    if (user) {
+      const fallback = "https://www.gravatar.com/avatar/?d=mp&s=96";
+      img.src = localPhotoURL || profile.photoURL || user.photoURL || fallback;
+      button.classList.remove("hidden");
+    } else {
+      button.classList.add("hidden");
+    }
+  }
+
+  function setTheme(theme) {
+    document.documentElement.classList.toggle("dark", theme === "dark");
+    localStorage.setItem("estudo_admin_ufal_theme", theme);
+  }
+
+  async function publishCourse(course) {
+    if (!user || !course || course.isDefault) return;
+    const id = `${user.uid}_${String(course.id).replace(/[^a-zA-Z0-9_-]/g, "_")}`;
+    const data = {
+      ownerUid: user.uid,
+      ownerName: profile.displayName || user.displayName || "Estudante",
+      ownerPhotoURL: profile.photoURL || user.photoURL || "",
+      title: String(course.name || "Edital sem título"),
+      modalidade: course.modalidade || "",
+      subcategoria: course.subcategoria || "",
+      disciplinas: (course.disciplinas || []).map(d => ({
+        name: String(d.name || ""),
+        topics: (d.topics || []).map(t => ({
+          title: String(t.title || ""),
+          videos: Array.isArray(t.videos) ? t.videos.map(v => String(v)) : []
+        }))
+      })),
+      updatedAt: serverTimestamp()
+    };
+    const refDoc = doc(db, "publicEditals", id);
+    const existing = await getDoc(refDoc);
+    if (!existing.exists()) data.createdAt = serverTimestamp();
+    await setDoc(refDoc, data, { merge: true });
+  }
+
+  async function syncAll() {
+    if (!user) return;
+    const account = appBridge()?.getAccount();
+    if (!account) return;
+    await setDoc(doc(db, "users", user.uid), {
+      account,
+      profile: {
+        displayName: profile.displayName || user.displayName || "",
+        photoURL: profile.photoURL || user.photoURL || ""
+      },
+      email: user.email || "",
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+    for (const course of account.courses || []) {
+      if (!course.isDefault) await publishCourse(course);
+    }
+  }
+
+  function scheduleSave() {
+    if (!user) return;
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      syncAll().catch(error => {
+        console.error("Erro ao sincronizar dados:", error);
+        showToast("Falha ao sincronizar com a nuvem. Confira as regras do Firestore.", false);
+      });
+    }, 650);
+  }
+
+  async function onUserChanged(nextUser) {
+    user = nextUser;
+    if (!nextUser) {
+      authReady = true;
+      el("authGate")?.classList.remove("hidden");
+      setGateMessage("O acesso à plataforma exige uma conta Google.");
+      el("profileAvatarButton")?.classList.add("hidden");
+      return;
+    }
+
+    setGateMessage("Carregando seus dados...");
+    try {
+      const userRef = doc(db, "users", nextUser.uid);
+      const snap = await getDoc(userRef);
+      if (snap.exists() && snap.data().account) {
+        const data = snap.data();
+        profile = {
+          displayName: data.profile?.displayName || nextUser.displayName || "",
+          photoURL: data.profile?.photoURL || nextUser.photoURL || ""
+        };
+        appBridge()?.replaceAccount(data.account);
+      } else {
+        profile = { displayName: nextUser.displayName || "", photoURL: nextUser.photoURL || "" };
+        await syncAll(); // migra os dados locais existentes para a primeira conta vinculada
+      }
+      const storedTheme = localStorage.getItem("estudo_admin_ufal_theme") || "dark";
+      setTheme(storedTheme);
+      await loadLocalPhoto(nextUser.uid);
+      paintAvatar();
+      hideGate();
+      authReady = true;
+      showToast("Conta Google vinculada. Bem-vindo ao Estudo em Foco.");
+    } catch (error) {
+      console.error("Erro ao carregar a conta:", error);
+      user = null;
+      el("authGate")?.classList.remove("hidden");
+      setGateMessage("Não foi possível carregar seus dados. Verifique as regras do Firestore e tente novamente.");
+    }
+  }
+
+  function openProfile() {
+    if (!user) return;
+    el("profileNameInput").value = profile.displayName || user.displayName || "";
+    el("profilePreview").src = localPhotoURL || profile.photoURL || user.photoURL || "https://www.gravatar.com/avatar/?d=mp&s=160";
+    syncThemeLabel();
+    el("profileModal").classList.remove("hidden");
+    el("profileModal").classList.add("flex");
+  }
+  function closeProfile() {
+    el("profileModal").classList.add("hidden");
+    el("profileModal").classList.remove("flex");
+    pendingPhoto = null;
+    el("profilePhotoFile").value = "";
+  }
+  function syncThemeLabel() {
+    const button = el("profileThemeToggle");
+    if (button) button.textContent = document.documentElement.classList.contains("dark") ? "Modo escuro" : "Modo claro";
+  }
+  function previewPhoto(file) {
+    if (!file) return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      showToast("Escolha uma imagem PNG, JPG ou WebP.", false); return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      showToast("A foto deve ter no máximo 2 MB.", false); return;
+    }
+    pendingPhoto = file;
+    el("profilePreview").src = URL.createObjectURL(file);
+  }
+  async function saveProfile() {
+    if (!user) return;
+    const displayName = el("profileNameInput").value.trim();
+    if (!displayName) { showToast("Informe um nome para o perfil.", false); return; }
+    try {
+      if (pendingPhoto) {
+        await saveLocalPhoto(user.uid, pendingPhoto);
+        if (localPhotoURL) URL.revokeObjectURL(localPhotoURL);
+        localPhotoURL = URL.createObjectURL(pendingPhoto);
+      }
+      const photoURL = profile.photoURL || user.photoURL || "";
+      await updateProfile(user, { displayName });
+      profile = { displayName, photoURL };
+      await syncAll();
+      paintAvatar();
+      closeProfile();
+      showToast("Perfil atualizado.");
+    } catch (error) {
+      console.error("Erro ao salvar perfil:", error);
+      showToast("Não foi possível salvar o perfil. Confira as regras do Firestore e do Storage.", false);
+    }
+  }
+
+  async function loadPublicEditals() {
+    const target = el("publicSearchResults");
+    target.innerHTML = '<p class="text-sm text-slate-500">Buscando editais públicos...</p>';
+    const snap = await getDocs(collection(db, "publicEditals"));
+    publicEditals = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    publicEditals.sort((a,b) => {
+      const at = a.updatedAt?.toMillis?.() || 0;
+      const bt = b.updatedAt?.toMillis?.() || 0;
+      return bt - at;
+    });
+    renderPublicEditals(publicEditals);
+  }
+
+  function renderPublicEditals(items) {
+    const target = el("publicSearchResults");
+    target.replaceChildren();
+    if (!items.length) {
+      const p = document.createElement("p");
+      p.className = "text-sm text-slate-500";
+      p.textContent = "Nenhum edital público encontrado.";
+      target.appendChild(p); return;
+    }
+    for (const item of items) {
+      const card = document.createElement("article");
+      card.className = "rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-obsidian-950 p-4";
+      const row = document.createElement("div");
+      row.className = "flex items-start justify-between gap-3";
+      const info = document.createElement("div");
+      info.className = "min-w-0";
+      const title = document.createElement("h3");
+      title.className = "font-bold text-sm text-slate-900 dark:text-white";
+      title.textContent = item.title || "Edital sem título";
+      const meta = document.createElement("p");
+      meta.className = "mt-1 text-xs text-slate-500";
+      const subjects = item.disciplinas?.length || 0;
+      const topics = (item.disciplinas || []).reduce((sum,d) => sum + (d.topics?.length || 0), 0);
+      meta.textContent = `${item.modalidade || "Concurso"} · ${subjects} disciplinas · ${topics} conteúdos · por ${item.ownerName || "Estudante"}`;
+      const add = document.createElement("button");
+      add.className = "shrink-0 rounded-lg bg-sky-600 hover:bg-sky-700 px-3 py-2 text-xs font-bold text-white";
+      add.textContent = "Adicionar à minha conta";
+      add.addEventListener("click", () => copyPublicEdittal(item));
+      row.append(info, add); info.append(title, meta); card.append(row); target.append(card);
+    }
+  }
+
+  function filterPublicEditals(value) {
+    const term = String(value || "").toLocaleLowerCase("pt-BR");
+    renderPublicEditals(publicEditals.filter(item =>
+      [item.title, item.modalidade, item.subcategoria, item.ownerName].some(v => String(v || "").toLocaleLowerCase("pt-BR").includes(term))
+    ));
+  }
+
+  function copyPublicEdittal(item) {
+    const account = appBridge()?.getAccount();
+    if (!account || !user) return;
+    const base = String(item.title || "Edital compartilhado");
+    let name = base;
+    if (account.courses.some(c => c.name.toLocaleLowerCase("pt-BR") === base.toLocaleLowerCase("pt-BR"))) name = `${base} (cópia)`;
+    const id = `public-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,7)}`;
+    const course = {
+      id, name, modalidade: item.modalidade || "", subcategoria: item.subcategoria || "",
+      isDefault: false,
+      disciplinas: (item.disciplinas || []).map(d => ({
+        name: d.name || "",
+        topics: (d.topics || []).map(t => ({ title: t.title || "", videos: Array.isArray(t.videos) ? [...t.videos] : [] }))
+      }))
+    };
+    account.courses.push(course);
+    account.progress[id] = { done: {}, notes: {}, lastTopic: null };
+    account.activeCourseId = id;
+    appBridge()?.replaceAccount(account);
+    scheduleSave();
+    closePublicSearch();
+    showToast("Edital adicionado à sua conta. Sua cópia é independente.");
+  }
+
+  function openPublicSearch(initialTerm = "") {
+    el("publicSearchModal").classList.remove("hidden");
+    el("publicSearchModal").classList.add("flex");
+    el("publicSearchInput").value = initialTerm || "";
+    loadPublicEditals().then(() => { if (initialTerm) filterPublicEditals(initialTerm); }).catch(error => {
+      console.error(error);
+      el("publicSearchResults").textContent = "Erro ao buscar editais. Verifique as regras do Firestore.";
+    });
+  }
+  function closePublicSearch() {
+    el("publicSearchModal").classList.add("hidden");
+    el("publicSearchModal").classList.remove("flex");
+  }
+
+  window.estudoFocoAuth = { signIn, signOut: doSignOut, scheduleSave };
+  window.estudoFocoProfile = { open: openProfile, close: closeProfile, save: saveProfile, previewPhoto, syncThemeLabel };
+  window.estudoFocoPublicSearch = { open: openPublicSearch, close: closePublicSearch, filter: filterPublicEditals };
+
+  onAuthStateChanged(auth, onUserChanged);
+</script>
+
 </body>
 </html>
