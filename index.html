@@ -303,6 +303,11 @@
       <button onclick="window.estudoFocoLibrary?.openSaved()" class="rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 text-xs font-bold hover:border-sky-500">Editais salvos</button>
       <button onclick="window.estudoFocoLibrary?.openMine()" class="rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 text-xs font-bold hover:border-sky-500">Meus editais</button>
     </div>
+    <div id="adminModerationNav" class="hidden p-3 border-b border-slate-200 dark:border-slate-800/80">
+      <button onclick="window.estudoFocoModeration?.open()" class="w-full rounded-lg border border-amber-400/60 bg-amber-500/10 text-amber-700 dark:text-amber-300 px-3 py-2.5 text-xs font-extrabold hover:bg-amber-500/20 transition flex items-center justify-center gap-2">
+        <span aria-hidden="true">⚑</span> Modo Moderação
+      </button>
+    </div>
 
     <!-- Search Input -->
     <div class="p-3 border-b border-slate-200 dark:border-slate-800/80 bg-slate-50/30 dark:bg-obsidian-950/30">
@@ -2344,6 +2349,9 @@ $('api-key').value = savedApiKey;
   let saveTimer = null;
   let publicEditals = [];
   let authReady = false;
+  // UID autorizado a moderar publicações públicas.
+  const ADMIN_UID = "FL3BncG78icJAKnbMrt1Y9CqaaH3";
+  const isAdmin = () => !!user && user.uid === ADMIN_UID;
 
   const el = id => document.getElementById(id);
   const appBridge = () => window.estudoFocoApp;
@@ -2413,6 +2421,8 @@ $('api-key').value = savedApiKey;
       updatedAt: serverTimestamp()
     };
     const refDoc = doc(db, "publicEditals", id);
+    const blockSnap = await getDoc(doc(db, "moderationBlocks", id));
+    if (blockSnap.exists() && !isAdmin()) return;
     const existing = await getDoc(refDoc);
     if (!existing.exists()) data.createdAt = serverTimestamp();
     await setDoc(refDoc, data, { merge: true });
@@ -2451,6 +2461,7 @@ $('api-key').value = savedApiKey;
     user = nextUser;
     if (!nextUser) {
       authReady = true;
+      el("adminModerationNav")?.classList.add("hidden");
       el("authGate")?.classList.remove("hidden");
       setGateMessage("O acesso à plataforma exige uma conta Google.");
       el("profileAvatarButton")?.classList.add("hidden");
@@ -2476,6 +2487,7 @@ $('api-key').value = savedApiKey;
       setTheme(storedTheme);
       await loadLocalPhoto(nextUser.uid);
       paintAvatar();
+      el("adminModerationNav")?.classList.toggle("hidden", !isAdmin());
       hideGate();
       authReady = true;
       showToast("Conta Google vinculada. Bem-vindo ao Estudo em Foco.");
@@ -2584,6 +2596,9 @@ $('api-key').value = savedApiKey;
         actionButton("Curtir",()=>toggleLike(item)),
         actionButton("Copiar",()=>copyPublicEdittal(item),"bg-sky-600 text-white border-sky-600")
       );
+      if (isAdmin()) {
+        actions.append(actionButton("Excluir publicação",()=>moderateDeleteEdital(item),"text-red-600 border-red-300 dark:border-red-900 hover:border-red-500"));
+      }
       card.append(title,meta,stats,actions); target.append(card);
       hasLiked(item).then(liked=>{ const b=[...actions.children][2]; if(b) b.textContent=liked?"Curtido · retirar":"Curtir"; }).catch(()=>{});
       isSaved(item.id).then(saved=>{ const b=[...actions.children][1]; if(b) b.textContent=saved?"Salvo · remover":"Salvar"; }).catch(()=>{});
@@ -2693,6 +2708,62 @@ $('api-key').value = savedApiKey;
     appBridge()?.replaceAccount(account);scheduleSave();closePublicSearch();showToast("Cópia independente criada. Você pode editar disciplinas, tópicos e links sem alterar o original.");
   }
 
+  async function moderateDeleteEdital(item) {
+    if (!isAdmin()) {
+      showToast("Você não tem permissão para moderar publicações.", false);
+      return;
+    }
+    const title = item.title || "este edital";
+    const confirmed = confirm(`Excluir permanentemente a publicação "${title}"?\n\nO edital deixará de aparecer na área pública. A cópia particular de quem o criou não será apagada.`);
+    if (!confirmed) return;
+    try {
+      const publicationRef = doc(db, "publicEditals", item.id);
+      const likesRef = collection(db, "publicEditals", item.id, "likes");
+      const likes = await getDocs(likesRef);
+      // Remove também os documentos de curtidas para não deixar subcoleção órfã.
+      for (const like of likes.docs) await deleteDoc(like.ref);
+      // Registra um bloqueio para impedir que a sincronização do autor recrie automaticamente a publicação.
+      await setDoc(doc(db, "moderationBlocks", item.id), {
+        editalId: item.id,
+        title,
+        ownerUid: item.ownerUid || "",
+        moderatedBy: user.uid,
+        moderatedAt: serverTimestamp()
+      });
+      await deleteDoc(publicationRef);
+      publicEditals = publicEditals.filter(entry => entry.id !== item.id);
+      renderPublicEditals(publicEditals);
+      showToast("Publicação removida. O autor não poderá republicá-la com o mesmo identificador.");
+    } catch (error) {
+      console.error("Erro ao moderar edital:", error);
+      showToast("Não foi possível excluir a publicação. Confira as regras de moderação do Firestore.", false);
+    }
+  }
+
+  async function openModeration() {
+    if (!isAdmin()) {
+      showToast("Acesso restrito ao administrador.", false);
+      return;
+    }
+    openPublicSearch();
+    const heading = document.createElement("div");
+    heading.className = "mb-3 rounded-xl border border-amber-400/50 bg-amber-500/10 p-3";
+    const title = document.createElement("p");
+    title.className = "font-extrabold text-sm text-amber-800 dark:text-amber-300";
+    title.textContent = "Modo Moderação";
+    const description = document.createElement("p");
+    description.className = "mt-1 text-xs text-slate-600 dark:text-slate-300";
+    description.textContent = "Revise as publicações e exclua aquelas que não devem permanecer na plataforma. A exclusão remove a publicação pública, não o edital particular do autor.";
+    heading.append(title, description);
+    const target = el("publicSearchResults");
+    target.prepend(heading);
+    // Garante que a listagem esteja completa e mantém o aviso no topo.
+    await loadPublicEditals();
+    target.prepend(heading);
+    const searchInput = el("publicSearchInput");
+    if (searchInput) searchInput.placeholder = "Filtrar publicações para moderação...";
+  }
+
   function openPublicSearch(initialTerm = "") {
     el("publicSearchModal").classList.remove("hidden");
     el("publicSearchModal").classList.add("flex");
@@ -2711,6 +2782,7 @@ $('api-key').value = savedApiKey;
   window.estudoFocoProfile = { open: openProfile, close: closeProfile, save: saveProfile, previewPhoto, syncThemeLabel };
   window.estudoFocoPublicSearch = { open: openPublicSearch, close: closePublicSearch, filter: filterPublicEditals };
   window.estudoFocoLibrary = { openSaved: openSavedEditals, openMine: openMyEditals };
+  window.estudoFocoModeration = { open: openModeration, isAdmin };
 
   onAuthStateChanged(auth, onUserChanged);
 </script>
