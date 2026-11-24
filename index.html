@@ -130,7 +130,7 @@
   <div id="publicSearchModal" class="fixed inset-0 z-[210] hidden items-center justify-center bg-slate-950/75 backdrop-blur-sm p-3 sm:p-5">
     <div class="w-full max-w-3xl max-h-[88vh] overflow-hidden rounded-2xl bg-white dark:bg-obsidian-900 border border-slate-200 dark:border-slate-700 shadow-2xl flex flex-col">
       <div class="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3">
-        <div><h2 class="text-lg font-extrabold text-slate-900 dark:text-white">Encontrar editais públicos</h2><p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Pesquise e adicione uma organização à sua conta.</p></div>
+        <div><h2 class="text-lg font-extrabold text-slate-900 dark:text-white">Encontrar editais públicos</h2><p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Visualize, salve, curta ou copie editais. A visualização não altera o original.</p></div>
         <button onclick="window.estudoFocoPublicSearch?.close()" class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-obsidian-800">✕</button>
       </div>
       <div class="p-4 border-b border-slate-200 dark:border-slate-800"><input id="publicSearchInput" oninput="window.estudoFocoPublicSearch?.filter(this.value)" placeholder="Buscar por concurso, edital ou autor..." class="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-obsidian-950 px-4 py-3 text-sm focus:outline-none focus:border-sky-500"></div>
@@ -297,6 +297,11 @@
         <svg class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" d="m21 21-4.35-4.35"/></svg>
         <input id="publicSearchQuick" type="search" onfocus="window.estudoFocoPublicSearch?.open(this.value)" placeholder="Buscar outro edital público..." class="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-obsidian-950 pl-9 pr-3 py-2.5 text-xs text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-sky-500 transition">
       </div>
+    </div>
+
+    <div class="p-3 border-b border-slate-200 dark:border-slate-800/80 grid grid-cols-2 gap-2">
+      <button onclick="window.estudoFocoLibrary?.openSaved()" class="rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 text-xs font-bold hover:border-sky-500">Editais salvos</button>
+      <button onclick="window.estudoFocoLibrary?.openMine()" class="rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2 text-xs font-bold hover:border-sky-500">Meus editais</button>
     </div>
 
     <!-- Search Input -->
@@ -2271,7 +2276,7 @@ $('api-key').value = savedApiKey;
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
   import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
-  import { getFirestore, doc, getDoc, setDoc, collection, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+  import { getFirestore, doc, getDoc, setDoc, collection, getDocs, serverTimestamp, runTransaction, increment, deleteDoc } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyCFEDCWtZkJ0jU1GK5r2T_Nndz4Fe4S-Zg",
@@ -2395,6 +2400,9 @@ $('api-key').value = savedApiKey;
       title: String(course.name || "Edital sem título"),
       modalidade: course.modalidade || "",
       subcategoria: course.subcategoria || "",
+      sourcePublicationId: course.sourcePublicationId || "",
+      sourceOwnerUid: course.sourceOwnerUid || "",
+      likesCount: Number(course.likesCount || 0),
       disciplinas: (course.disciplinas || []).map(d => ({
         name: String(d.name || ""),
         topics: (d.topics || []).map(t => ({
@@ -2531,80 +2539,158 @@ $('api-key').value = savedApiKey;
     }
   }
 
+  function dateValue(value) { return value?.toMillis?.() || 0; }
+  function sortPublic(items) {
+    return [...items].sort((a,b) => (Number(b.likesCount || 0)-Number(a.likesCount || 0)) || (dateValue(b.updatedAt)-dateValue(a.updatedAt)));
+  }
+
   async function loadPublicEditals() {
     const target = el("publicSearchResults");
     target.innerHTML = '<p class="text-sm text-slate-500">Buscando editais públicos...</p>';
     const snap = await getDocs(collection(db, "publicEditals"));
-    publicEditals = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    publicEditals.sort((a,b) => {
-      const at = a.updatedAt?.toMillis?.() || 0;
-      const bt = b.updatedAt?.toMillis?.() || 0;
-      return bt - at;
-    });
+    publicEditals = sortPublic(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     renderPublicEditals(publicEditals);
   }
 
-  function renderPublicEditals(items) {
+  function actionButton(label, action, style="") {
+    const b=document.createElement("button");
+    b.className=`rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs font-bold hover:border-sky-500 ${style}`;
+    b.textContent=label; b.addEventListener("click",action); return b;
+  }
+
+  async function hasLiked(item) {
+    if (!user) return false;
+    return (await getDoc(doc(db,"publicEditals",item.id,"likes",user.uid))).exists();
+  }
+
+  async function renderPublicEditals(items) {
     const target = el("publicSearchResults");
     target.replaceChildren();
     if (!items.length) {
-      const p = document.createElement("p");
-      p.className = "text-sm text-slate-500";
-      p.textContent = "Nenhum edital público encontrado.";
-      target.appendChild(p); return;
+      const p=document.createElement("p"); p.className="text-sm text-slate-500"; p.textContent="Nenhum edital encontrado."; target.append(p); return;
     }
     for (const item of items) {
-      const card = document.createElement("article");
-      card.className = "rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-obsidian-950 p-4";
-      const row = document.createElement("div");
-      row.className = "flex items-start justify-between gap-3";
-      const info = document.createElement("div");
-      info.className = "min-w-0";
-      const title = document.createElement("h3");
-      title.className = "font-bold text-sm text-slate-900 dark:text-white";
-      title.textContent = item.title || "Edital sem título";
-      const meta = document.createElement("p");
-      meta.className = "mt-1 text-xs text-slate-500";
-      const subjects = item.disciplinas?.length || 0;
-      const topics = (item.disciplinas || []).reduce((sum,d) => sum + (d.topics?.length || 0), 0);
-      meta.textContent = `${item.modalidade || "Concurso"} · ${subjects} disciplinas · ${topics} conteúdos · por ${item.ownerName || "Estudante"}`;
-      const add = document.createElement("button");
-      add.className = "shrink-0 rounded-lg bg-sky-600 hover:bg-sky-700 px-3 py-2 text-xs font-bold text-white";
-      add.textContent = "Adicionar à minha conta";
-      add.addEventListener("click", () => copyPublicEdittal(item));
-      row.append(info, add); info.append(title, meta); card.append(row); target.append(card);
+      const card=document.createElement("article");
+      card.className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-obsidian-950 p-4";
+      const title=document.createElement("h3"); title.className="font-bold text-sm text-slate-900 dark:text-white"; title.textContent=item.title||"Edital sem título";
+      const meta=document.createElement("p"); meta.className="mt-1 text-xs text-slate-500";
+      const subjects=item.disciplinas?.length||0, topics=(item.disciplinas||[]).reduce((n,d)=>n+(d.topics?.length||0),0);
+      meta.textContent=`${item.modalidade||"Concurso"} · ${subjects} disciplinas · ${topics} conteúdos · por ${item.ownerName||"Estudante"}`;
+      const stats=document.createElement("p"); stats.className="mt-2 text-xs font-semibold text-slate-500"; stats.textContent=`♥ ${Number(item.likesCount||0)} curtidas`;
+      const actions=document.createElement("div"); actions.className="mt-3 flex flex-wrap gap-2";
+      actions.append(
+        actionButton("Visualizar",()=>viewPublicEdital(item)),
+        actionButton("Salvar",()=>savePublicReference(item)),
+        actionButton("Curtir",()=>toggleLike(item)),
+        actionButton("Copiar",()=>copyPublicEdittal(item),"bg-sky-600 text-white border-sky-600")
+      );
+      card.append(title,meta,stats,actions); target.append(card);
+      hasLiked(item).then(liked=>{ const b=[...actions.children][2]; if(b) b.textContent=liked?"Curtido · retirar":"Curtir"; }).catch(()=>{});
+      isSaved(item.id).then(saved=>{ const b=[...actions.children][1]; if(b) b.textContent=saved?"Salvo · remover":"Salvar"; }).catch(()=>{});
     }
   }
 
   function filterPublicEditals(value) {
-    const term = String(value || "").toLocaleLowerCase("pt-BR");
-    renderPublicEditals(publicEditals.filter(item =>
-      [item.title, item.modalidade, item.subcategoria, item.ownerName].some(v => String(v || "").toLocaleLowerCase("pt-BR").includes(term))
-    ));
+    const term=String(value||"").toLocaleLowerCase("pt-BR");
+    const filtered=publicEditals.filter(item=>[item.title,item.modalidade,item.subcategoria,item.ownerName].some(v=>String(v||"").toLocaleLowerCase("pt-BR").includes(term)));
+    renderPublicEditals(sortPublic(filtered));
+  }
+
+  async function toggleLike(item) {
+    if(!user) return;
+    const pubRef=doc(db,"publicEditals",item.id), likeRef=doc(db,"publicEditals",item.id,"likes",user.uid);
+    try {
+      await runTransaction(db,async tx=>{
+        const likeSnap=await tx.get(likeRef);
+        if(likeSnap.exists()){ tx.delete(likeRef); tx.update(pubRef,{likesCount:increment(-1)}); }
+        else { tx.set(likeRef,{uid:user.uid,createdAt:serverTimestamp()}); tx.update(pubRef,{likesCount:increment(1)}); }
+      });
+      const snap=await getDoc(pubRef), updated={id:item.id,...snap.data()};
+      publicEditals=publicEditals.map(x=>x.id===item.id?updated:x);
+      filterPublicEditals(el("publicSearchInput")?.value||"");
+      showToast("Curtida atualizada.");
+    } catch(e){ console.error(e); showToast("Não foi possível registrar a curtida. Confira as regras do Firestore.",false); }
+  }
+
+  async function isSaved(publicationId) {
+    if(!user) return false;
+    return (await getDoc(doc(db,"users",user.uid,"savedEditals",publicationId))).exists();
+  }
+
+  async function savePublicReference(item) {
+    if(!user) return;
+    const ref=doc(db,"users",user.uid,"savedEditals",item.id);
+    try {
+      const snap=await getDoc(ref);
+      if(snap.exists()) await deleteDoc(ref);
+      else await setDoc(ref,{publicationId:item.id,savedAt:serverTimestamp()});
+      showToast(snap.exists()?"Edital removido dos salvos.":"Edital salvo na sua biblioteca.");
+      if(el("savedEditalsView") && !el("savedEditalsView").classList.contains("hidden")) openSavedEditals();
+      filterPublicEditals(el("publicSearchInput")?.value||"");
+    } catch(e){ console.error(e); showToast("Não foi possível salvar a referência.",false); }
+  }
+
+  function viewPublicEdital(item) {
+    const modal=document.createElement("div"); modal.className="fixed inset-0 z-[230] bg-slate-950/80 backdrop-blur-sm p-3 flex items-center justify-center";
+    modal.id="publicReadOnlyModal";
+    const panel=document.createElement("div"); panel.className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white dark:bg-obsidian-900 p-5 border border-slate-300 dark:border-slate-700";
+    const header=document.createElement("div"); header.className="flex justify-between gap-3 items-start";
+    const h=document.createElement("h2"); h.className="text-xl font-extrabold"; h.textContent=item.title||"Edital";
+    const close=actionButton("Fechar",()=>modal.remove()); header.append(h,close); panel.append(header);
+    const by=document.createElement("p"); by.className="text-xs text-slate-500 mt-2"; by.textContent=`Publicado por ${item.ownerName||"Estudante"} · ${item.modalidade||"Concurso"}`; panel.append(by);
+    (item.disciplinas||[]).forEach(d=>{
+      const section=document.createElement("section"); section.className="mt-5 border-t border-slate-200 dark:border-slate-700 pt-4";
+      const sh=document.createElement("h3"); sh.className="font-bold"; sh.textContent=d.name||"Disciplina"; section.append(sh);
+      (d.topics||[]).forEach(t=>{
+        const topic=document.createElement("div"); topic.className="mt-3";
+        const th=document.createElement("p"); th.className="text-sm font-semibold"; th.textContent=t.title||"Tópico"; topic.append(th);
+        (t.videos||[]).forEach(url=>{const a=document.createElement("a");a.href=url;a.target="_blank";a.rel="noopener noreferrer";a.className="block text-xs text-sky-600 dark:text-sky-400 underline mt-1 break-all";a.textContent=url;topic.append(a);});
+        section.append(topic);
+      });
+      panel.append(section);
+    });
+    modal.append(panel); modal.addEventListener("click",e=>{if(e.target===modal)modal.remove();}); document.body.append(modal);
+  }
+
+  async function openSavedEditals() {
+    const target=el("publicSearchResults"); el("publicSearchModal").classList.remove("hidden"); el("publicSearchModal").classList.add("flex");
+    target.innerHTML='<p class="text-sm text-slate-500">Carregando seus editais salvos...</p>';
+    try {
+      const saved=await getDocs(collection(db,"users",user.uid,"savedEditals"));
+      const live=[];
+      for(const entry of saved.docs){const pub=await getDoc(doc(db,"publicEditals",entry.id)); if(pub.exists()) live.push({id:pub.id,...pub.data()});}
+      publicEditals=sortPublic(publicEditals);
+      renderPublicEditals(sortPublic(live));
+    } catch(e){console.error(e);target.textContent="Não foi possível carregar os editais salvos. Verifique as regras do Firestore.";}
+  }
+
+  function openMyEditals() {
+    const account=appBridge()?.getAccount(); const target=el("publicSearchResults");
+    el("publicSearchModal").classList.remove("hidden");el("publicSearchModal").classList.add("flex");
+    target.replaceChildren();
+    const heading=document.createElement("p");heading.className="text-xs text-slate-500 mb-3";heading.textContent="Editais criados por você e cópias independentes que você pode editar.";target.append(heading);
+    (account?.courses||[]).filter(c=>!c.isDefault).forEach(course=>{
+      const card=document.createElement("article");card.className="rounded-xl border border-slate-200 dark:border-slate-700 p-4";
+      const title=document.createElement("p");title.className="font-bold text-sm";title.textContent=course.name;
+      const meta=document.createElement("p");meta.className="text-xs text-slate-500 mt-1";meta.textContent=`${course.disciplinas?.length||0} disciplinas · ${course.disciplinas?.reduce((n,d)=>n+(d.topics?.length||0),0)||0} tópicos`;
+      const actions=document.createElement("div");actions.className="flex flex-wrap gap-2 mt-3";
+      actions.append(actionButton("Abrir e editar",()=>{account.activeCourseId=course.id;appBridge()?.replaceAccount(account);el("courseSelector").value=course.id;closePublicSearch();document.getElementById("courseSelector").dispatchEvent(new Event("change"));}));
+      actions.append(actionButton("Renomear",()=>{const name=prompt("Novo nome do edital:",course.name);if(name?.trim()){course.name=name.trim();appBridge()?.replaceAccount(account);appBridge()?.save?.();if(window.estudoFocoAuth?.scheduleSave)window.estudoFocoAuth.scheduleSave();openMyEditals();}}));
+      card.append(title,meta,actions);target.append(card);
+    });
+    if(!target.children.length)target.textContent="Você ainda não possui editais próprios.";
   }
 
   function copyPublicEdittal(item) {
-    const account = appBridge()?.getAccount();
-    if (!account || !user) return;
-    const base = String(item.title || "Edital compartilhado");
-    let name = base;
-    if (account.courses.some(c => c.name.toLocaleLowerCase("pt-BR") === base.toLocaleLowerCase("pt-BR"))) name = `${base} (cópia)`;
-    const id = `public-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,7)}`;
-    const course = {
-      id, name, modalidade: item.modalidade || "", subcategoria: item.subcategoria || "",
-      isDefault: false,
-      disciplinas: (item.disciplinas || []).map(d => ({
-        name: d.name || "",
-        topics: (d.topics || []).map(t => ({ title: t.title || "", videos: Array.isArray(t.videos) ? [...t.videos] : [] }))
-      }))
-    };
-    account.courses.push(course);
-    account.progress[id] = { done: {}, notes: {}, lastTopic: null };
-    account.activeCourseId = id;
-    appBridge()?.replaceAccount(account);
-    scheduleSave();
-    closePublicSearch();
-    showToast("Edital adicionado à sua conta. Sua cópia é independente.");
+    const account=appBridge()?.getAccount(); if(!account||!user)return;
+    const base=String(item.title||"Edital compartilhado");
+    let name=base;
+    if(account.courses.some(c=>c.name.toLocaleLowerCase("pt-BR")===base.toLocaleLowerCase("pt-BR")))name=`${base} (cópia)`;
+    const id=`public-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,7)}`;
+    const course={id,name,modalidade:item.modalidade||"",subcategoria:item.subcategoria||"",sourcePublicationId:item.id,sourceOwnerUid:item.ownerUid||"",isDefault:false,
+      disciplinas:(item.disciplinas||[]).map(d=>({name:d.name||"",topics:(d.topics||[]).map(t=>({title:t.title||"",videos:Array.isArray(t.videos)?[...t.videos]:[]}))}))};
+    account.courses.push(course);account.progress[id]={done:{},notes:{},lastTopic:null};account.activeCourseId=id;
+    appBridge()?.replaceAccount(account);scheduleSave();closePublicSearch();showToast("Cópia independente criada. Você pode editar disciplinas, tópicos e links sem alterar o original.");
   }
 
   function openPublicSearch(initialTerm = "") {
@@ -2624,6 +2710,7 @@ $('api-key').value = savedApiKey;
   window.estudoFocoAuth = { signIn, signOut: doSignOut, scheduleSave };
   window.estudoFocoProfile = { open: openProfile, close: closeProfile, save: saveProfile, previewPhoto, syncThemeLabel };
   window.estudoFocoPublicSearch = { open: openPublicSearch, close: closePublicSearch, filter: filterPublicEditals };
+  window.estudoFocoLibrary = { openSaved: openSavedEditals, openMine: openMyEditals };
 
   onAuthStateChanged(auth, onUserChanged);
 </script>
